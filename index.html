@@ -74,7 +74,7 @@ tr:hover td{background:var(--bg)}
 .login-card{background:var(--bg2);border-radius:24px;padding:40px;border:1px solid var(--border);max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.1)}
 .scrollbar-thin::-webkit-scrollbar{width:5px}.scrollbar-thin::-webkit-scrollbar-track{background:transparent}.scrollbar-thin::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px}
 @media(max-width:768px){.sidebar{position:fixed;left:-280px;z-index:100;height:100%}.sidebar.open{left:0}}
-  </style>
+</style>
   <style>body { box-sizing: border-box; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
@@ -86,8 +86,7 @@ tr:hover td{background:var(--bg)}
   <div id="pwa-install-prompt" class="modal-overlay" style="display:none;z-index:10001" onclick="if(event.target===this)closePWAPrompt()">
    <div class="modal-content" style="max-width:450px;background:linear-gradient(135deg,#2a8fff,#1459e1);border:none">
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-     <div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-      <i data-lucide="download" style="width:28px;height:28px;color:#fff"></i>
+     <div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="download" style="width:28px;height:28px;color:#fff"></i>
      </div>
      <div>
       <h3 style="font-weight:700;font-size:18px;color:#fff">Install Aplikasi</h3>
@@ -100,8 +99,7 @@ tr:hover td{background:var(--bg)}
        ✓ Bekerja offline dengan data lokal<br>
        ✓ Notifikasi real-time absensi</p>
     </div>
-    <div class="flex gap-3 justify-end">
-     <button class="btn btn-secondary" onclick="closePWAPrompt()" style="background:rgba(255,255,255,.2);color:#fff;border:none"><i data-lucide="x" style="width:16px;height:16px"></i> Nanti</button> <button class="btn btn-success" onclick="installPWA()" style="background:#fff;color:#2a8fff;font-weight:700"><i data-lucide="download" style="width:16px;height:16px"></i> Install</button>
+    <div class="flex gap-3 justify-end"><button class="btn btn-secondary" onclick="closePWAPrompt()" style="background:rgba(255,255,255,.2);color:#fff;border:none"><i data-lucide="x" style="width:16px;height:16px"></i> Nanti</button> <button class="btn btn-success" onclick="installPWA()" style="background:#fff;color:#2a8fff;font-weight:700"><i data-lucide="download" style="width:16px;height:16px"></i> Install</button>
     </div>
    </div>
   </div>
@@ -743,9 +741,7 @@ function renderDashboardView(el){
   `;
 }
 
-// [REST OF THE CODE CONTINUES... - Code is very long, using same functions from your existing code]
-// Paste the remaining functions for: renderSelfieView, renderQRScanView, renderAbsenView, etc.
-
+// ==================== SELFIE VIEW ====================
 function renderSelfieView(el){
   el.innerHTML=`
     <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">📸 Selfie Absen</h2>
@@ -816,8 +812,1926 @@ function finishSelfie(){
   renderView();
 }
 
-// [CONTINUE WITH REST OF FUNCTIONS - QR SCAN, ATTENDANCE, EXPORT, etc...]
-// Due to length limitation, I'll provide the Code.gs separately
+// ==================== QR SCAN VIEW ====================
+let qrScanner=null;let qrVideoStream=null;
+function renderQRScanView(el){
+  const isMapel=APP.userType==='guru_mapel';
+  const cls=APP.userType==='guru_kelas'?APP.currentUser.kelas:APP.selectedClass;
+  const students=APP.students[cls]||[];
+  const today=getToday();
+
+  if(!APP.selfieDone && APP.userType!=='admin'){
+    el.innerHTML=`<div class="card text-center p-8"><i data-lucide="camera-off" style="width:48px;height:48px;color:var(--text2);margin:0 auto 16px"></i><h3 style="font-size:18px;font-weight:700;margin-bottom:6px">Selfie Dulu!</h3><p style="font-size:13px;color:var(--text2);margin-bottom:16px">Anda harus mengambil selfie terlebih dahulu sebelum melakukan absensi QR.</p><button class="btn btn-primary" onclick="navigate('selfie')">📸 Ambil Selfie</button></div>`;
+    return;
+  }
+
+  let h=0,a=0;
+  students.forEach(st=>{
+    const v=APP.attendance[getAttKey(cls,today,st.id)];
+    if(v==='hadir')h++;else if(v)a++;
+  });
+
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">📱 Scan QR Absen</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px">${today} — Kelas ${cls}${isMapel?` — ${APP.selectedSubject}`:''}</p>
+    ${isMapel?`<div class="card mb-4"><div class="flex gap-3 flex-wrap">
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">MAPEL</label><select onchange="APP.selectedSubject=this.value;renderView()" style="width:auto">${APP.subjects.map(s=>`<option ${s===APP.selectedSubject?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">KELAS</label><select onchange="APP.selectedClass=this.value;renderView()" style="width:auto">${APP.classes.map(c=>`<option ${c===APP.selectedClass?'selected':''}>${c}</option>`).join('')}</select></div>
+    </div></div>`:''}
+    <div class="grid md:grid-cols-3 gap-4 mb-4">
+      <div class="stat-card" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0)"><div style="font-size:28px;font-weight:800;color:#065f46">${h}</div><div style="font-size:12px;color:#065f46;font-weight:600">Sudah Scan</div></div>
+      <div class="stat-card" style="background:linear-gradient(135deg,#fee2e2,#fecaca)"><div style="font-size:28px;font-weight:800;color:#991b1b">${students.length-h}</div><div style="font-size:12px;color:#991b1b;font-weight:600">Belum Scan</div></div>
+      <div class="stat-card" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe)"><div style="font-size:28px;font-weight:800;color:#1e40af">${students.length}</div><div style="font-size:12px;color:#1e40af;font-weight:600">Total Siswa</div></div>
+    </div>
+    <div class="card mb-4">
+      <div id="qr-scanner" style="width:100%;max-width:400px;border-radius:12px;overflow:hidden;background:var(--bg);aspect-ratio:1;display:none"></div>
+      <div id="qr-placeholder" style="width:100%;max-width:400px;border-radius:12px;background:var(--bg);aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+        <i data-lucide="qr-code" style="width:48px;height:48px;color:var(--text2)"></i>
+        <p style="color:var(--text2);font-size:13px">Klik tombol untuk mulai scan</p>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:2;flex-wrap:wrap;justify-content:center">
+        <button class="btn btn-primary" id="btn-start-qr" onclick="startQRScanner()"><i data-lucide="video" style="width:16px;height:16px"></i> Buka Kamera</button>
+        <button class="btn btn-secondary" id="btn-stop-qr" onclick="stopQRScanner()" style="display:none"><i data-lucide="video-off" style="width:16px;height:16px"></i> Tutup Kamera</button>
+        <button class="btn btn-secondary" id="btn-manual-qr" onclick="manualQRInput()"><i data-lucide="keyboard" style="width:16px;height:16px"></i> Input Manual</button>
+      </div>
+      <div id="qr-result" style="margin-top:16px;display:none;padding:12px;border-radius:8px;background:#d1fae5;border:2px solid #10b981">
+        <p style="font-size:12px;color:#065f46"><strong id="qr-name"></strong><br><span id="qr-status"></span></p>
+      </div>
+    </div>
+    <div class="card" style="overflow-x:auto;padding:0">
+      <table>
+        <thead><tr><th style="width:50px">No</th><th>NIS</th><th>Nama Siswa</th><th style="text-align:center">Status</th></tr></thead>
+        <tbody>
+          ${students.map((st,i)=>{
+            const k=getAttKey(cls,today,st.id);
+            const v=APP.attendance[k]||'';
+            return `<tr>
+              <td style="font-weight:700">${i+1}</td>
+              <td style="font-size:12px;color:var(--text2)">${st.nis}</td>
+              <td style="font-weight:600">${st.name}</td>
+              <td style="text-align:center">${v==='hadir'?'<span style="background:#d1fae5;color:#065f46;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700">✓ Hadir</span>':v?'<span style="background:#fee2e2;color:#991b1b;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700">'+v+'</span>':'<span style="color:var(--text2);font-size:11px">-</span>'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div id="manual-qr-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+      <div class="modal-content" style="max-width:400px">
+        <h3 style="font-weight:700;font-size:18px;margin-bottom:16px">Input QR Code Manual</h3>
+        <input id="manual-qr-input" placeholder="Tempel atau ketik kode QR siswa..." autofocus>
+        <p style="font-size:11px;color:var(--text2);margin-top:8px">Format: siswa_id@kelas@nama@nis (contoh: 1A-0@1A@Ahmad@202401001)</p>
+        <div class="flex gap-2 justify-end mt-4">
+          <button class="btn btn-secondary" onclick="document.getElementById('manual-qr-modal').style.display='none'">Batal</button>
+          <button class="btn btn-primary" onclick="processQRCode(document.getElementById('manual-qr-input').value)">Proses</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function startQRScanner(){
+  const scanner=document.getElementById('qr-scanner');
+  const placeholder=document.getElementById('qr-placeholder');
+  const video=document.createElement('video');
+  video.setAttribute('playsinline','true');
+  video.setAttribute('autoplay','true');
+  scanner.innerHTML='';scanner.appendChild(video);
+
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(stream=>{
+    qrVideoStream=stream;
+    video.srcObject=stream;
+    scanner.style.display='block';
+    placeholder.style.display='none';
+    document.getElementById('btn-start-qr').style.display='none';
+    document.getElementById('btn-stop-qr').style.display='inline-flex';
+    
+    const canvas=document.createElement('canvas');
+    const ctx=canvas.getContext('2d');
+    
+    function scanQR(){
+      if(!qrVideoStream||!video.readyState)return requestAnimationFrame(scanQR);
+      
+      canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      
+      const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const code=jsQR(imageData.data,imageData.width,imageData.height);
+      
+      if(code){
+        console.log('QR detected:',code.data);
+        processQRCode(code.data);
+        stopQRScanner();
+      }else{
+        requestAnimationFrame(scanQR);
+      }
+    }
+    scanQR();
+  }).catch(()=>{
+    toast('Kamera tidak tersedia','error');
+  });
+}
+
+function stopQRScanner(){
+  if(qrVideoStream){qrVideoStream.getTracks().forEach(t=>t.stop());qrVideoStream=null}
+  document.getElementById('qr-scanner').style.display='none';
+  document.getElementById('qr-placeholder').style.display='flex';
+  document.getElementById('btn-start-qr').style.display='inline-flex';
+  document.getElementById('btn-stop-qr').style.display='none';
+}
+
+function manualQRInput(){
+  document.getElementById('manual-qr-modal').style.display='flex';
+}
+
+function processQRCode(qrData){
+  if(!qrData)return;
+  
+  // QR format: siswa_id@kelas@nama@nis
+  const parts=qrData.split('@');
+  if(parts.length<2){toast('Format QR Code tidak valid','error');return}
+  
+  const studentId=parts[0];
+  const cls=parts[1]||APP.selectedClass;
+  const students=APP.students[cls]||[];
+  const student=students.find(s=>s.id===studentId||s.nis===studentId);
+  
+  if(!student){toast('Siswa tidak ditemukan','error');return}
+  
+  const today=getToday();
+  const k=getAttKey(cls,today,student.id);
+  APP.attendance[k]='hadir';
+  
+  const result=document.getElementById('qr-result');
+  document.getElementById('qr-name').textContent=student.name;
+  document.getElementById('qr-status').textContent=`✓ Absen berhasil! NIS: ${student.nis}`;
+  result.style.display='block';
+  result.style.background='#d1fae5';result.style.borderColor='#10b981';
+  
+  addLog(`${APP.currentUser.name} scan QR ${student.name} (kelas ${cls})`);
+  toast(`${student.name} absen hadir!`);
+  
+  document.getElementById('manual-qr-modal').style.display='none';
+  document.getElementById('manual-qr-input').value='';
+  
+  setTimeout(()=>{result.style.display='none';renderView()},1500);
+}
+
+// ==================== ADMIN: STUDENTS ====================
+function renderStudentsAdminView(el){
+  const cls=APP.selectedClass;
+  const students=APP.students[cls]||[];
+  const totalAllStudents=Object.values(APP.students).reduce((s,a)=>s+a.length,0);
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">👦 Data Siswa</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Kelola data siswa per kelas — Total: <strong>${totalAllStudents} siswa</strong> di <strong>${APP.classes.length} kelas</strong></p>
+    <div class="card mb-4" style="background:var(--bg);border:1px solid var(--border);padding:16px">
+      <p style="font-size:12px;font-weight:600;margin-bottom:12px;color:var(--text2)">🔍 PILIH KELAS</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px">
+        ${APP.classes.map(c=>{
+          const count=APP.students[c]?.length||0;
+          return `<button class="card" style="padding:12px;text-align:center;cursor:pointer;border:2px solid ${cls===c?'#2a8fff':'var(--border)'};background:${cls===c?'rgba(42,143,255,.1)':'var(--bg2)'};transition:all .2s" onclick="APP.selectedClass='${c}';renderView()">
+            <div style="font-weight:700;font-size:16px;color:${cls===c?'#2a8fff':'var(--text)'}">${c}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px">${count} siswa</div>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="flex gap-3 items-end mb-4 flex-wrap">
+      <div><input type="file" id="import-student-admin" accept=".csv" onchange="handleImportAdmin(event)" style="display:none"><button class="btn btn-primary btn-sm" onclick="document.getElementById('import-student-admin').click()"><i data-lucide="upload" style="width:14px;height:14px"></i> Import CSV</button></div>
+    </div>
+    <div class="card mb-4" style="background:var(--bg);padding:12px;border-radius:8px;border-left:4px solid #2a8fff">
+      <p style="font-size:13px;font-weight:600">Kelas ${cls} — <span style="color:var(--text2)">${students.length} siswa</span></p>
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table>
+        <thead><tr><th>No</th><th>NIS</th><th>Nama</th><th>QR Code</th><th style="width:80px">Aksi</th></tr></thead>
+        <tbody>${students.map((st,i)=>`<tr><td>${i+1}</td><td style="font-size:12px;color:var(--text2)">${st.nis}</td><td style="font-weight:600">${st.name}</td>
+          <td><button class="btn btn-primary btn-sm" onclick="viewStudentQR('${st.id}','${cls}','${st.name}')" style="padding:4px 8px"><i data-lucide="qr-code" style="width:14px;height:14px"></i></button></td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteStudent('${cls}','${st.id}')" style="padding:4px 8px"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:12px;color:var(--text2);margin-top:8px">Total: ${students.length} siswa</p>
+    <div id="qr-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+      <div class="modal-content" style="max-width:500px">
+        <h3 style="font-weight:700;font-size:18px;margin-bottom:4px" id="modal-student-name"></h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:16px" id="modal-student-nis"></p>
+        <div style="text-align:center;background:var(--bg);padding:20px;border-radius:12px;margin-bottom:16px">
+          <div id="qr-container" style="display:inline-block;background:#fff;padding:16px;border-radius:8px"></div>
+        </div>
+        <div style="background:var(--bg);padding:12px;border-radius:8px;margin-bottom:16px;font-family:monospace;font-size:11px;word-break:break-all;color:var(--text2)">
+          <p style="margin-bottom:4px"><strong>Kode QR:</strong></p>
+          <p id="qr-code-display"></p>
+        </div>
+        <div class="flex gap-2 justify-end flex-wrap">
+          <button class="btn btn-secondary btn-sm" onclick="downloadQR()"><i data-lucide="download" style="width:14px;height:14px"></i> Download</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('qr-modal').style.display='none'">Tutup</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function viewStudentQR(studentId,cls,name){
+  const qrData=`${studentId}@${cls}`;
+  const modal=document.getElementById('qr-modal');
+  document.getElementById('modal-student-name').textContent=name;
+  document.getElementById('modal-student-nis').textContent=`ID: ${studentId}`;
+  document.getElementById('qr-code-display').textContent=qrData;
+  
+  const container=document.getElementById('qr-container');
+  container.innerHTML='';
+  new QRCode(container,{text:qrData,width:300,height:300,colorDark:'#000',colorLight:'#fff'});
+  
+  modal.style.display='flex';
+}
+
+function downloadQR(){
+  const canvas=document.querySelector('#qr-container canvas');
+  if(!canvas)return;
+  const link=document.createElement('a');
+  link.href=canvas.toDataURL('image/png');
+  link.download=`qr-${document.getElementById('modal-student-name').textContent}.png`;
+  link.click();
+  toast('QR Code berhasil diunduh!');
+}
+
+function handleImportAdmin(event){
+  const file=event.target.files[0];if(!file)return;
+  const cls=APP.selectedClass;
+  const reader=new FileReader();reader.onload=function(e){
+    const lines=e.target.result.split('\n').filter(l=>l.trim());let c=0;
+    lines.forEach((line,i)=>{
+      if(i===0&&(line.toLowerCase().includes('nis')||line.toLowerCase().includes('nama')))return;
+      const cols=line.split(/[,;\t]/);
+      if(cols.length>=2){const nis=cols[0].trim();const name=cols[1].trim();if(nis&&name){APP.students[cls].push({id:`${cls}-adm-${Date.now()}-${i}`,name,nis});c++;}}
+    });
+    toast(`${c} siswa diimport ke kelas ${cls}`);addLog(`Admin import ${c} siswa ke kelas ${cls}`);renderView();
+  };reader.readAsText(file);
+}
+
+function deleteStudent(cls,id){APP.students[cls]=APP.students[cls].filter(s=>s.id!==id);toast('Siswa dihapus');renderView()}
+
+// ==================== ADMIN: QR MANAGE ====================
+function renderQRManageView(el){
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">📱 Kelola QR Siswa</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Buat dan print QR Code untuk semua siswa</p>
+    <div class="grid md:grid-cols-2 gap-4 mb-6">
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">🎯 Generate QR Code</h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Pilih kelas untuk membuat QR Code semua siswa</p>
+        <div class="mb-3"><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">KELAS</label><select id="qr-class" style="width:100%">${APP.classes.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <button class="btn btn-primary" onclick="generateAllQR()"><i data-lucide="download" style="width:16px;height:16px"></i> Download ZIP</button>
+        <p style="font-size:11px;color:var(--text2);margin-top:8px">💡 Semua QR dalam satu file ZIP siap print</p>
+      </div>
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">🖨️ Print Template</h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Print kartu QR dengan template profesional</p>
+        <div class="mb-3"><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">KELAS</label><select id="print-class" style="width:100%">${APP.classes.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <button class="btn btn-primary" onclick="printQRTemplate()"><i data-lucide="printer" style="width:16px;height:16px"></i> Print</button>
+        <p style="font-size:11px;color:var(--text2);margin-top:8px">📄 Format siap cetak di kertas A4</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">📋 Format QR Code</h3>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Setiap QR Code berisi data siswa dalam format:</p>
+      <div style="background:var(--bg);padding:12px;border-radius:8px;font-family:monospace;font-size:11px;color:var(--text2)">
+        <p>siswa_id@kelas_id</p>
+        <p style="margin-top:4px;color:#10b981">Contoh: 1A-0@1A</p>
+      </div>
+      <p style="font-size:11px;color:var(--text2);margin-top:8px">✓ Guru scan dengan kamera → Otomatis absen hadir</p>
+    </div>`;
+}
+
+function generateAllQR(){
+  const cls=document.getElementById('qr-class').value;
+  const students=APP.students[cls]||[];
+  if(!students.length){toast('Belum ada siswa di kelas ini','error');return}
+  
+  showProgress();
+  toast(`Membuat ${students.length} QR Code untuk kelas ${cls}...`);
+  let count=0;
+  students.forEach((st,i)=>{
+    setTimeout(()=>{
+      const qrData=`${st.id}@${cls}`;
+      const canvas=document.createElement('canvas');
+      const container=document.createElement('div');
+      document.body.appendChild(container);
+      new QRCode(container,{text:qrData,width:200,height:200,colorDark:'#000',colorLight:'#fff'});
+      
+      setTimeout(()=>{
+        const qrCanvas=container.querySelector('canvas');
+        if(qrCanvas){
+          const link=document.createElement('a');
+          link.href=qrCanvas.toDataURL('image/png');
+          link.download=`qr_${st.name.replace(/\s/g,'_')}_${st.nis}.png`;
+          link.click();
+        }
+        document.body.removeChild(container);
+        count++;
+        if(count===students.length){
+          hideProgress();
+          toast(`${students.length} QR Code berhasil diunduh!`);
+        }
+      },100);
+    },i*500);
+  });
+  
+  addLog(`Admin generate QR ${students.length} siswa kelas ${cls}`);
+}
+
+function printQRTemplate(){
+  const cls=document.getElementById('print-class').value;
+  const students=APP.students[cls]||[];
+  if(!students.length){toast('Belum ada siswa','error');return}
+  
+  let html=`<html><head><title>Kartu QR Siswa Kelas ${cls}</title><style>
+    body{font-family:Arial,sans-serif;padding:10mm;margin:0}
+    .card{width:8.5cm;height:10.8cm;border:2px solid #333;border-radius:8px;padding:8mm;margin:5mm;display:inline-block;vertical-align:top;page-break-inside:avoid;box-sizing:border-box}
+    .card-title{font-size:12px;font-weight:bold;margin-bottom:4mm}
+    .qr-container{text-align:center;margin:4mm 0}
+    .info{font-size:9px;text-align:center;margin-top:4mm}
+    .name{font-weight:bold;font-size:10px}
+    .nis{font-size:8px;color:#666}
+  </style></head><body>`;
+  
+  students.forEach(st=>{
+    const qrData=`${st.id}@${cls}`;
+    html+=`<div class="card">
+      <div class="card-title">KARTU ABSENSI</div>
+      <div class="qr-container">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrData)}" style="width:100%;height:auto">
+      </div>
+      <div class="info">
+        <div class="name">${st.name}</div>
+        <div class="nis">NIS: ${st.nis}</div>
+        <div class="nis">Kelas ${cls}</div>
+      </div>
+    </div>`;
+  });
+  
+  html+=`</body></html>`;
+  const win=window.open('','_blank');win.document.write(html);
+  setTimeout(()=>win.print(),500);
+  addLog(`Admin print QR template kelas ${cls}`);
+}
+function renderAbsenView(el){
+  const isMapel=APP.userType==='guru_mapel';
+  const cls=APP.userType==='guru_kelas'?APP.currentUser.kelas:APP.selectedClass;
+  const students=APP.students[cls]||[];
+  const today=getToday();
+  
+  // Check if today is a holiday
+  const todayHoliday=APP.academicCalendar.find(h=>h.date===today);
+
+  if(!APP.selfieDone && APP.userType!=='admin'){
+    el.innerHTML=`<div class="card text-center p-8"><i data-lucide="camera-off" style="width:48px;height:48px;color:var(--text2);margin:0 auto 16px"></i><h3 style="font-size:18px;font-weight:700;margin-bottom:6px">Selfie Dulu!</h3><p style="font-size:13px;color:var(--text2);margin-bottom:16px">Anda harus mengambil selfie terlebih dahulu sebelum melakukan absensi.</p><button class="btn btn-primary" onclick="navigate('selfie')">📸 Ambil Selfie</button></div>`;
+    return;
+  }
+  
+  // Show holiday notice if today is a holiday
+  if(todayHoliday){
+    el.innerHTML=`
+    <div class="card" style="background:linear-gradient(135deg,#fecaca,#fee2e2);border:2px solid #ef4444;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:16px;padding:16px">
+        <div style="width:56px;height:56px;border-radius:50%;background:#ef4444;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:28px">🚫</div>
+        <div style="flex:1">
+          <h3 style="font-weight:700;font-size:16px;color:#991b1b;margin-bottom:2px">Hari Libur / Cuti</h3>
+          <p style="font-size:13px;color:#991b1b;margin:0">${todayHoliday.reason}</p>
+          <p style="font-size:11px;color:#b91c1c;margin-top:4px">📅 Tanggal: ${new Date(today).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</p>
+          <p style="font-size:11px;color:#b91c1c;margin-top:2px">ℹ️ Menu absensi tidak tersedia pada tanggal ini</p>
+        </div>
+      </div>
+    </div>
+    <div class="card text-center p-8" style="color:var(--text2)">
+      <i data-lucide="calendar-x" style="width:48px;height:48px;margin:0 auto 16px;display:block;color:#ef4444"></i>
+      <h3 style="font-size:18px;font-weight:700;margin-bottom:6px">Sekolah Libur</h3>
+      <p style="font-size:13px;margin-bottom:16px">Sistem absensi tidak aktif hari ini. Silakan cek Kalender Akademik untuk jadwal mengajar berikutnya.</p>
+      <button class="btn btn-secondary" onclick="navigate('academic_calendar')" style="display:${APP.userType==='admin'?'inline-flex':'none'}"><i data-lucide="calendar" style="width:16px;height:16px"></i> Lihat Kalender Akademik</button>
+    </div>`;
+    return;
+  }
+
+  // Calculate current attendance stats
+  let h=0,a=0,s=0,iz=0;
+  students.forEach(st=>{
+    const k=getAttKey(cls,today,st.id);
+    const v=APP.attendance[k];
+    if(v==='hadir')h++;else if(v==='alfa')a++;else if(v==='sakit')s++;else if(v==='izin')iz++;
+  });
+  const total=students.length;const done=h+a+s+iz;
+  const pct=total?Math.round(done/total*100):0;
+
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">📋 Absensi Siswa</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px">${today} — Kelas ${cls}${isMapel?` — ${APP.selectedSubject}`:''}</p>
+    ${isMapel?`<div class="card mb-4"><div class="flex gap-3 flex-wrap">
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">MAPEL</label><select onchange="APP.selectedSubject=this.value;renderView()" style="width:auto">${APP.subjects.map(s=>`<option ${s===APP.selectedSubject?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">KELAS</label><select onchange="APP.selectedClass=this.value;renderView()" style="width:auto">${APP.classes.map(c=>`<option ${c===APP.selectedClass?'selected':''}>${c}</option>`).join('')}</select></div>
+    </div></div>`:''}
+    
+    <div class="card mb-4" style="background:linear-gradient(135deg,rgba(42,143,255,.05),rgba(42,143,255,.02));border:1px solid rgba(42,143,255,.2);padding:16px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:12px;margin-bottom:12px">
+        <div style="text-align:center;padding:10px;background:rgba(16,185,129,.1);border-radius:8px">
+          <div style="font-size:24px;font-weight:800;color:#10b981" id="counter-hadir">${h}</div>
+          <div style="font-size:11px;color:#065f46;font-weight:600;margin-top:2px">Hadir</div>
+        </div>
+        <div style="text-align:center;padding:10px;background:rgba(239,68,68,.1);border-radius:8px">
+          <div style="font-size:24px;font-weight:800;color:#ef4444" id="counter-alfa">${a}</div>
+          <div style="font-size:11px;color:#991b1b;font-weight:600;margin-top:2px">Alfa</div>
+        </div>
+        <div style="text-align:center;padding:10px;background:rgba(245,158,11,.1);border-radius:8px">
+          <div style="font-size:24px;font-weight:800;color:#f59e0b" id="counter-sakit">${s}</div>
+          <div style="font-size:11px;color:#92400e;font-weight:600;margin-top:2px">Sakit</div>
+        </div>
+        <div style="text-align:center;padding:10px;background:rgba(59,130,246,.1);border-radius:8px">
+          <div style="font-size:24px;font-weight:800;color:#3b82f6" id="counter-izin">${iz}</div>
+          <div style="font-size:11px;color:#1e40af;font-weight:600;margin-top:2px">Izin</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:rgba(42,143,255,.1);border-radius:8px;border-left:3px solid #2a8fff">
+        <div style="display:flex;gap:12px;align-items:center;flex:1">
+          <div style="width:40px;height:40px;border-radius:50%;background:#2a8fff;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px" id="counter-pct">${pct}%</div>
+          <div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:2px">Progress Absensi</p>
+            <p style="font-size:11px;color:#2a8fff;font-weight:600">${done} dari ${total} siswa</p>
+          </div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:var(--text2)">
+          <p style="margin:0">${total-done} belum</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="flex gap-2 mb-4 flex-wrap">
+      <button class="btn btn-success btn-sm" onclick="setAllAttendance('${cls}','hadir')"><i data-lucide="check-check" style="width:14px;height:14px"></i> Semua Hadir</button>
+      <button class="btn btn-secondary btn-sm" onclick="setAllAttendance('${cls}','')"><i data-lucide="rotate-ccw" style="width:14px;height:14px"></i> Reset</button>
+    </div>
+    <div class="card" style="overflow-x:auto;padding:0">
+      <table>
+        <thead><tr><th style="width:50px">No</th><th>NIS</th><th>Nama Siswa</th><th style="text-align:center">Status Kehadiran</th></tr></thead>
+        <tbody>
+          ${students.map((st,i)=>{
+            const k=getAttKey(cls,today,st.id);
+            const v=APP.attendance[k]||'';
+            return `<tr>
+              <td style="font-weight:700">${i+1}</td>
+              <td style="font-size:12px;color:var(--text2)">${st.nis}</td>
+              <td style="font-weight:600">${st.name}</td>
+              <td style="text-align:center">
+                <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">
+                  <span class="attendance-btn ab-hadir ${v==='hadir'?'selected':''}" onclick="setAtt('${cls}','${st.id}','hadir')">Hadir</span>
+                  <span class="attendance-btn ab-alfa ${v==='alfa'?'selected':''}" onclick="setAtt('${cls}','${st.id}','alfa')">Alfa</span>
+                  <span class="attendance-btn ab-sakit ${v==='sakit'?'selected':''}" onclick="setAtt('${cls}','${st.id}','sakit')">Sakit</span>
+                  <span class="attendance-btn ab-izin ${v==='izin'?'selected':''}" onclick="setAtt('${cls}','${st.id}','izin')">Izin</span>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function setAtt(cls,studentId,status){
+  const k=getAttKey(cls,getToday(),studentId);
+  APP.attendance[k]=APP.attendance[k]===status?'':status;
+  addLog(`${APP.currentUser.name} mencatat ${status||'reset'} untuk siswa di kelas ${cls}`);
+  
+  // Update counter live without full re-render
+  updateAttendanceCounters(cls);
+}
+
+function setAllAttendance(cls,status){
+  showProgress();
+  setTimeout(()=>{
+    const students=APP.students[cls]||[];
+    const today=getToday();
+    students.forEach(st=>{APP.attendance[getAttKey(cls,today,st.id)]=status});
+    if(status)addLog(`${APP.currentUser.name} set semua ${status} untuk kelas ${cls}`);
+    toast(status?'Semua siswa ditandai '+status:'Status direset');
+    hideProgress();
+    updateAttendanceCounters(cls);
+  },800);
+}
+
+// ==================== LIVE COUNTER UPDATE ====================
+function updateAttendanceCounters(cls){
+  const today=getToday();
+  const students=APP.students[cls]||[];
+  let h=0,a=0,s=0,iz=0;
+  
+  students.forEach(st=>{
+    const k=getAttKey(cls,today,st.id);
+    const v=APP.attendance[k];
+    if(v==='hadir')h++;
+    else if(v==='alfa')a++;
+    else if(v==='sakit')s++;
+    else if(v==='izin')iz++;
+  });
+  
+  const total=students.length;
+  const done=h+a+s+iz;
+  const pct=total?Math.round(done/total*100):0;
+  
+  // Update counter elements if they exist
+  const hairEl=document.getElementById('counter-hadir');
+  const alfEl=document.getElementById('counter-alfa');
+  const sakitEl=document.getElementById('counter-sakit');
+  const izinEl=document.getElementById('counter-izin');
+  const pctEl=document.getElementById('counter-pct');
+  
+  if(hairEl)hairEl.textContent=h;
+  if(alfEl)alfEl.textContent=a;
+  if(sakitEl)sakitEl.textContent=s;
+  if(izinEl)izinEl.textContent=iz;
+  if(pctEl)pctEl.textContent=pct+'%';
+}
+
+// ==================== REKAP VIEW ====================
+function renderRekapView(el){
+  const cls=APP.userType==='guru_kelas'?APP.currentUser.kelas:APP.selectedClass;
+  const students=APP.students[cls]||[];
+  const today=getToday();
+
+  // Count by status for today (simple demo)
+  let h=0,a=0,s=0,iz=0;
+  students.forEach(st=>{
+    const v=APP.attendance[getAttKey(cls,today,st.id)];
+    if(v==='hadir')h++;else if(v==='alfa')a++;else if(v==='sakit')s++;else if(v==='izin')iz++;
+  });
+
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">📊 Rekap Absen</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Kelas ${cls}</p>
+    ${APP.userType==='guru_mapel'?`<div class="card mb-4"><div class="flex gap-3 flex-wrap">
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">KELAS</label><select onchange="APP.selectedClass=this.value;renderView()" style="width:auto">${APP.classes.map(c=>`<option ${c===APP.selectedClass?'selected':''}>${c}</option>`).join('')}</select></div>
+    </div></div>`:''}
+    <div class="flex gap-2 mb-4 flex-wrap">
+      ${['minggu','bulan','semester','tahun'].map(p=>`<button class="btn ${APP.rekapPeriod===p?'btn-primary':'btn-secondary'} btn-sm" onclick="APP.rekapPeriod='${p}';renderView()">${p.charAt(0).toUpperCase()+p.slice(1)}</button>`).join('')}
+    </div>
+    <div class="grid md:grid-cols-2 gap-4 mb-4">
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">Grafik Batang — Periode: ${APP.rekapPeriod}</h3>
+        <div style="display:flex;align-items:end;gap:16px;height:180px;padding-bottom:10px">
+          ${[{l:'Hadir',v:h,c:'#10b981'},{l:'Alfa',v:a,c:'#ef4444'},{l:'Sakit',v:s,c:'#f59e0b'},{l:'Izin',v:iz,c:'#3b82f6'}].map(b=>`
+            <div style="flex:1;text-align:center">
+              <div style="font-size:14px;font-weight:800;margin-bottom:4px">${b.v}</div>
+              <div class="chart-bar" style="width:100%;background:${b.c};height:${students.length?b.v/students.length*140:0}px;min-height:4px"></div>
+              <p style="font-size:11px;margin-top:6px;font-weight:600">${b.l}</p>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">Grafik Lingkaran</h3>
+        <div style="display:flex;align-items:center;justify-content:center;height:180px">
+          ${renderPieChart(h,a,s,iz,students.length)}
+        </div>
+      </div>
+    </div>
+    <div class="card" style="overflow-x:auto;padding:0">
+      <table>
+        <thead><tr><th>No</th><th>NIS</th><th>Nama</th><th style="text-align:center">Hadir</th><th style="text-align:center">Alfa</th><th style="text-align:center">Sakit</th><th style="text-align:center">Izin</th></tr></thead>
+        <tbody>
+          ${students.map((st,i)=>{
+            const v=APP.attendance[getAttKey(cls,today,st.id)]||'-';
+            return `<tr><td>${i+1}</td><td style="font-size:12px;color:var(--text2)">${st.nis}</td><td style="font-weight:600">${st.name}</td>
+              <td style="text-align:center">${v==='hadir'?'✅':''}</td><td style="text-align:center">${v==='alfa'?'❌':''}</td>
+              <td style="text-align:center">${v==='sakit'?'🤒':''}</td><td style="text-align:center">${v==='izin'?'📝':''}</td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderPieChart(h,a,s,iz,total){
+  if(!total)return '<p style="color:var(--text2)">Belum ada data</p>';
+  const data=[{v:h,c:'#10b981',l:'Hadir'},{v:a,c:'#ef4444',l:'Alfa'},{v:s,c:'#f59e0b',l:'Sakit'},{v:iz,c:'#3b82f6',l:'Izin'}];
+  let cum=0;
+  const segments=data.filter(d=>d.v>0).map(d=>{
+    const pct=d.v/total*100;const start=cum;cum+=pct;
+    return {start,pct,color:d.c,label:d.l,val:d.v};
+  });
+  // simple CSS conic gradient
+  const gradParts=[];let offset=0;
+  segments.forEach(s=>{gradParts.push(`${s.color} ${offset}% ${offset+s.pct}%`);offset+=s.pct;});
+  if(offset<100)gradParts.push(`var(--bg3) ${offset}% 100%`);
+  return `<div style="position:relative"><div style="width:140px;height:140px;border-radius:50%;background:conic-gradient(${gradParts.join(',')})"></div>
+    <div style="position:absolute;inset:25px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;flex-direction:column">
+      <span style="font-size:20px;font-weight:800">${total?Math.round(h/total*100):0}%</span><span style="font-size:9px;color:var(--text2)">Hadir</span>
+    </div></div>`;
+}
+
+// ==================== IMPORT VIEW ====================
+function renderImportView(el){
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">📥 Import Data Siswa</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Import dari file Excel (.xlsx, .csv)</p>
+    <div class="card" style="max-width:600px">
+      <div style="border:2px dashed var(--border);border-radius:12px;padding:40px;text-align:center">
+        <i data-lucide="file-spreadsheet" style="width:48px;height:48px;color:var(--text2);margin:0 auto 12px;display:block"></i>
+        <p style="font-weight:700;margin-bottom:4px">Drag & drop file atau klik untuk browse</p>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:16px">Format: Kolom A = NIS, Kolom B = Nama Siswa</p>
+        <input type="file" id="import-file" accept=".xlsx,.xls,.csv" onchange="handleImport(event)" style="display:none">
+        <button class="btn btn-primary" onclick="document.getElementById('import-file').click()"><i data-lucide="upload" style="width:16px;height:16px"></i> Pilih File</button>
+      </div>
+      <div class="mt-4">
+        <label class="block text-xs font-semibold mb-1" style="color:var(--text2)">KELAS TUJUAN</label>
+        <select id="import-class">${APP.classes.map(c=>`<option>${c}</option>`).join('')}</select>
+      </div>
+      <div id="import-preview" class="mt-4" style="display:none"></div>
+    </div>
+    <div class="card mt-4" style="max-width:600px">
+      <h3 style="font-weight:700;font-size:15px;margin-bottom:8px">➕ Tambah Manual</h3>
+      <div class="flex gap-2 flex-wrap">
+        <input id="add-nis" placeholder="NIS" style="width:120px">
+        <input id="add-name" placeholder="Nama Siswa" style="flex:1;min-width:150px">
+        <select id="add-class" style="width:100px">${APP.classes.map(c=>`<option>${c}</option>`).join('')}</select>
+        <button class="btn btn-success" onclick="addStudentManual()"><i data-lucide="plus" style="width:16px;height:16px"></i></button>
+      </div>
+    </div>`;
+}
+
+function handleImport(event){
+  const file=event.target.files[0];if(!file)return;
+  const cls=document.getElementById('import-class').value;
+  showProgress();
+  // Simple CSV parse
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const text=e.target.result;
+    const lines=text.split('\n').filter(l=>l.trim());
+    let count=0;
+    lines.forEach((line,i)=>{
+      if(i===0&&(line.toLowerCase().includes('nis')||line.toLowerCase().includes('nama')))return;
+      const cols=line.split(/[,;\t]/);
+      if(cols.length>=2){
+        const nis=cols[0].trim();const name=cols[1].trim();
+        if(nis&&name){
+          APP.students[cls].push({id:`${cls}-imp-${Date.now()}-${i}`,name,nis});count++;
+        }
+      }
+    });
+    hideProgress();
+    toast(`${count} siswa berhasil diimport ke kelas ${cls}`);
+    addLog(`${APP.currentUser.name} import ${count} siswa ke kelas ${cls}`);
+    renderView();
+  };
+  reader.readAsText(file);
+}
+
+function addStudentManual(){
+  const nis=document.getElementById('add-nis').value.trim();
+  const name=document.getElementById('add-name').value.trim();
+  const cls=document.getElementById('add-class').value;
+  if(!name){toast('Nama siswa harus diisi','error');return}
+  APP.students[cls].push({id:`${cls}-m-${Date.now()}`,name,nis:nis||'-'});
+  toast(`${name} ditambahkan ke kelas ${cls}`);
+  addLog(`${APP.currentUser.name} menambah siswa ${name} ke kelas ${cls}`);
+  document.getElementById('add-nis').value='';document.getElementById('add-name').value='';
+}
+
+// ==================== EXPORT VIEW ====================
+function renderExportView(el){
+  const cls=APP.userType==='guru_kelas'?APP.currentUser.kelas:APP.selectedClass;
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">📤 Export & Print</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Export rekap absensi ke Excel atau PDF</p>
+    <div class="grid md:grid-cols-2 gap-4 mb-6">
+      <div class="card text-center p-6 cursor-pointer" onclick="exportCSV('${cls}')" style="cursor:pointer">
+        <div style="width:56px;height:56px;border-radius:14px;background:#d1fae5;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i data-lucide="file-spreadsheet" style="width:28px;height:28px;color:#10b981"></i></div>
+        <h3 style="font-weight:700;font-size:16px">Export Excel</h3>
+        <p style="font-size:12px;color:var(--text2);margin-top:4px">Download sebagai CSV</p>
+      </div>
+      <div class="card text-center p-6 cursor-pointer" onclick="printAbsen('${cls}')">
+        <div style="width:56px;height:56px;border-radius:14px;background:#dbeafe;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i data-lucide="printer" style="width:28px;height:28px;color:#3b82f6"></i></div>
+        <h3 style="font-weight:700;font-size:16px">Print / PDF</h3>
+        <p style="font-size:12px;color:var(--text2);margin-top:4px">Cetak atau simpan PDF</p>
+      </div>
+    </div>
+    <div style="border-top:2px solid var(--border);padding-top:20px;margin-bottom:20px"></div>
+    <h3 style="font-size:18px;font-weight:700;margin-bottom:12px">🎫 Print Kartu Absen</h3>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Cetak kartu absen siswa dalam format yang rapi</p>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="card text-center p-6 cursor-pointer" onclick="printAttendanceCardsHTML('${cls}')">
+        <div style="width:56px;height:56px;border-radius:14px;background:#c7d2fe;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i data-lucide="card-stack" style="width:28px;height:28px;color:#4f46e5"></i></div>
+        <h3 style="font-weight:700;font-size:16px">Print Kartu</h3>
+        <p style="font-size:12px;color:var(--text2);margin-top:4px">Format kartu siap cetak A4</p>
+      </div>
+      <div class="card text-center p-6 cursor-pointer" onclick="exportCardsExcel('${cls}')">
+        <div style="width:56px;height:56px;border-radius:14px;background:#fce7f3;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i data-lucide="download" style="width:28px;height:28px;color:#ec4899"></i></div>
+        <h3 style="font-weight:700;font-size:16px">Export Excel</h3>
+        <p style="font-size:12px;color:var(--text2);margin-top:4px">Download daftar kartu Excel</p>
+      </div>
+    </div>
+    ${APP.userType==='guru_mapel'?`<div class="card mt-4"><div class="flex gap-3 flex-wrap">
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">KELAS</label><select onchange="APP.selectedClass=this.value;renderView()" style="width:auto">${APP.classes.map(c=>`<option ${c===APP.selectedClass?'selected':''}>${c}</option>`).join('')}</select></div>
+    </div></div>`:''}`;
+}
+
+function exportCSV(cls){
+  showProgress();
+  setTimeout(()=>{
+    const students=APP.students[cls]||[];
+    const today=getToday();
+    let csv='No,NIS,Nama,Status\n';
+    students.forEach((st,i)=>{
+      const v=APP.attendance[getAttKey(cls,today,st.id)]||'Belum';
+      csv+=`${i+1},${st.nis},"${st.name}",${v}\n`;
+    });
+    const blob=new Blob([csv],{type:'text/csv'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=`absensi_${cls}_${today}.csv`;a.click();
+    hideProgress();
+    toast('File CSV berhasil di-download!');
+    addLog(`${APP.currentUser.name} export CSV kelas ${cls}`);
+  },600);
+}
+
+function printAbsen(cls){
+  const students=APP.students[cls]||[];
+  const today=getToday();
+  let rows=students.map((st,i)=>{
+    const v=APP.attendance[getAttKey(cls,today,st.id)]||'Belum';
+    return `<tr><td style="border:1px solid #333;padding:6px">${i+1}</td><td style="border:1px solid #333;padding:6px">${st.nis}</td><td style="border:1px solid #333;padding:6px">${st.name}</td><td style="border:1px solid #333;padding:6px;text-align:center">${v}</td></tr>`;
+  }).join('');
+  const win=window.open('','_blank');
+  win.document.write(`<html><head><title>Rekap Absensi Kelas ${cls}</title></head><body style="font-family:Arial;padding:20px">
+    <h2 style="text-align:center">${APP.schoolName}</h2><h3 style="text-align:center">Rekap Absensi Kelas ${cls} — ${today}</h3>
+    <table style="width:100%;border-collapse:collapse;margin-top:20px"><tr><th style="border:1px solid #333;padding:6px">No</th><th style="border:1px solid #333;padding:6px">NIS</th><th style="border:1px solid #333;padding:6px">Nama</th><th style="border:1px solid #333;padding:6px">Status</th></tr>${rows}</table>
+    <p style="margin-top:30px;text-align:right">Guru: ${APP.currentUser.name}</p>
+    <script>window.print()<\/script></body></html>`);
+  addLog(`${APP.currentUser.name} print absen kelas ${cls}`);
+}
+
+function printAttendanceCardsHTML(cls){
+  const students=APP.students[cls]||[];
+  if(!students.length){toast('Belum ada siswa di kelas ini','error');return}
+  
+  showProgress();
+  
+  setTimeout(()=>{
+    let html=`<html><head><title>Kartu Absen Kelas ${cls}</title><style>
+      body{font-family:'Plus Jakarta Sans',Arial,sans-serif;padding:10mm;margin:0;background:#f0f0f0}
+      .card{width:8.5cm;height:11cm;background:#fff;border:2px solid #2a8fff;border-radius:8px;padding:8mm;box-sizing:border-box;page-break-inside:avoid;margin:8mm auto;box-shadow:0 2px 8px rgba(0,0,0,.1);display:flex;flex-direction:column;justify-content:space-between}
+      .header{border-bottom:2px solid #2a8fff;padding-bottom:6mm;margin-bottom:6mm;text-align:center}
+      .header-school{font-weight:bold;font-size:11px;color:#2a8fff}
+      .header-card{font-weight:bold;font-size:12px;color:#1e293b;margin-top:2px}
+      .student-info{flex:1}
+      .info-row{font-size:10px;margin-bottom:5mm;display:flex;gap:4mm}
+      .info-label{color:#666;font-weight:bold;min-width:30mm}
+      .info-value{color:#000;font-weight:600;flex:1;word-break:break-word}
+      .footer{border-top:1px solid #ddd;padding-top:4mm;text-align:center;font-size:8px;color:#999}
+      .month-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2mm;margin-top:4mm;font-size:8px;text-align:center}
+      .month-box{background:#f0f4f8;padding:2mm;border-radius:3px;border:1px solid #e2e8f0}
+      .month-label{font-weight:bold;font-size:9px;margin-bottom:1mm}
+      .month-days{font-size:7px;color:#666}
+    </style></head><body>`;
+    
+    students.forEach((st,i)=>{
+      const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      html+=`<div class="card">
+        <div class="header">
+          <div class="header-school">${APP.schoolName}</div>
+          <div class="header-card">📋 KARTU ABSENSI</div>
+        </div>
+        <div class="student-info">
+          <div class="info-row">
+            <div class="info-label">Nama:</div>
+            <div class="info-value">${st.name}</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">NIS:</div>
+            <div class="info-value">${st.nis}</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Kelas:</div>
+            <div class="info-value">${cls}</div>
+          </div>
+          <div style="margin-top:4mm;padding-top:4mm;border-top:1px solid #ddd">
+            <div style="font-size:8px;font-weight:bold;color:#2a8fff;margin-bottom:2mm">Bulan Kehadiran</div>
+            <div class="month-grid">
+              ${months.map(m=>`<div class="month-box"><div class="month-label">${m}</div><div class="month-days">H: _</div></div>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <p style="margin:1mm 0">Semester: _____ | Tahun Ajaran: _____</p>
+          <p style="margin:1mm 0">Guru Kelas: ________________  Orang Tua: ________________</p>
+        </div>
+      </div>`;
+    });
+    
+    html+=`</body></html>`;
+    const win=window.open('','_blank');
+    win.document.write(html);
+    
+    setTimeout(()=>{
+      hideProgress();
+      win.focus();
+      toast(`Kartu absen ${students.length} siswa siap dicetak!`);
+      addLog(`Admin print kartu absen kelas ${cls} (${students.length} siswa)`);
+    },500);
+  },600);
+}
+
+function exportCardsExcel(cls){
+  const students=APP.students[cls]||[];
+  if(!students.length){toast('Belum ada siswa di kelas ini','error');return}
+  
+  showProgress();
+  
+  setTimeout(()=>{
+    // Create CSV content with proper formatting for Excel
+    let csv='No,NIS,Nama Siswa,Kelas,Tanggal Cetak,Catatan\n';
+    const today=new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+    
+    students.forEach((st,i)=>{
+      csv+=`${i+1},"${st.nis}","${st.name}","${cls}","${today}","Gunakan untuk absensi harian siswa"\n`;
+    });
+    
+    // Add extra lines for manual entry
+    for(let i=students.length+1;i<=students.length+5;i++){
+      csv+=`${i},"","","${cls}","${today}","(Kosongkan untuk siswa tambahan)"\n`;
+    }
+    
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const link=document.createElement('a');
+    const url=URL.createObjectURL(blob);
+    link.setAttribute('href',url);
+    link.setAttribute('download',`kartu_absen_${cls}_${new Date().getTime()}.csv`);
+    link.style.visibility='hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    hideProgress();
+    toast('File Excel kartu absen berhasil diunduh!');
+    addLog(`Admin export kartu absen kelas ${cls} ke Excel`);
+  },600);
+}
+
+// ==================== LOG VIEW ====================
+function renderLogView(el){
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">🕐 Log Aktivitas</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Riwayat semua aktivitas absensi</p>
+    <div class="card" style="padding:0;overflow-x:auto">
+      ${APP.activityLog.length?`<table>
+        <thead><tr><th>Waktu</th><th>User</th><th>Aktivitas</th></tr></thead>
+        <tbody>${APP.activityLog.map(l=>`<tr><td style="white-space:nowrap;font-size:12px">${l.time}</td><td style="font-weight:600;font-size:13px">${l.user}</td><td style="font-size:13px">${l.action}</td></tr>`).join('')}</tbody>
+      </table>`:`<div class="p-8 text-center" style="color:var(--text2)"><i data-lucide="clock" style="width:40px;height:40px;margin:0 auto 10px;display:block"></i>Belum ada aktivitas</div>`}
+    </div>`;
+}
+
+// ==================== ADMIN: TEACHERS ====================
+function renderTeachersView(el){
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">👩‍🏫 Data Guru</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Kelola data guru dan guru mata pelajaran</p>
+    <div class="card mb-4" style="max-width:700px">
+      <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">Import dari CSV</h3>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Format: username, password, nama, tipe (guru_kelas/guru_mapel), kelas/mapel</p>
+      <input type="file" id="import-teacher-file" accept=".csv" onchange="importTeachers(event)" style="display:none">
+      <button class="btn btn-primary btn-sm" onclick="document.getElementById('import-teacher-file').click()"><i data-lucide="upload" style="width:14px;height:14px"></i> Import CSV</button>
+    </div>
+    <div class="card mb-4" style="max-width:700px">
+      <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">➕ Tambah Guru</h3>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">NAMA</label><input id="t-name" placeholder="Nama lengkap"></div>
+        <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">USERNAME</label><input id="t-user" placeholder="Username"></div>
+        <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">PASSWORD</label><input id="t-pass" placeholder="Password"></div>
+        <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">TIPE</label><select id="t-type"><option value="guru_kelas">Guru Kelas</option><option value="guru_mapel">Guru Mapel</option></select></div>
+        <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">KELAS (Guru Kelas)</label><select id="t-kelas">${APP.classes.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">MAPEL (Guru Mapel)</label><select id="t-mapel">${APP.subjects.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      </div>
+      <button class="btn btn-success" onclick="addTeacher()"><i data-lucide="plus" style="width:16px;height:16px"></i> Tambah</button>
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table>
+        <thead><tr><th>Nama</th><th>Username</th><th>Password</th><th>Tipe</th><th>Kelas/Mapel</th><th style="width:120px">Aksi</th></tr></thead>
+        <tbody>${APP.teachers.map(t=>`<tr>
+          <td style="font-weight:600">${t.name}</td>
+          <td style="font-size:12px;color:var(--text2)">${t.username}</td>
+          <td style="font-size:12px;color:var(--text2);font-family:monospace"><span style="background:var(--bg);padding:2px 6px;border-radius:4px">${t.password}</span></td>
+          <td><span style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;background:${t.type==='admin'?'#fef3c7':t.type==='guru_kelas'?'#d1fae5':'#dbeafe'};color:${t.type==='admin'?'#92400e':t.type==='guru_kelas'?'#065f46':'#1e40af'}">${t.type}</span></td>
+          <td style="font-size:13px">${t.kelas||t.mapel||'-'}</td>
+          <td style="display:flex;gap:4px"><button class="btn btn-primary btn-sm" onclick="editTeacherModal('${t.id}')" style="padding:4px 8px"><i data-lucide="edit" style="width:14px;height:14px"></i></button><button class="btn btn-danger btn-sm" onclick="deleteTeacher('${t.id}')" style="padding:4px 8px"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div id="edit-teacher-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+      <div class="modal-content" id="modal-content"></div>
+    </div>`;
+}
+
+function addTeacher(){
+  const name=document.getElementById('t-name').value.trim();
+  const username=document.getElementById('t-user').value.trim();
+  const password=document.getElementById('t-pass').value.trim();
+  const type=document.getElementById('t-type').value;
+  const kelas=document.getElementById('t-kelas').value;
+  const mapel=document.getElementById('t-mapel').value;
+  if(!name||!username||!password){toast('Semua field harus diisi','error');return}
+  const t={id:'t-'+Date.now(),name,username,password,type};
+  if(type==='guru_kelas')t.kelas=kelas;else t.mapel=mapel;
+  APP.teachers.push(t);toast(`Guru ${name} berhasil ditambahkan`);
+  addLog(`Admin menambah guru: ${name}`);renderView();
+}
+
+function editTeacherModal(id){
+  const teacher=APP.teachers.find(t=>t.id===id);
+  if(!teacher)return;
+  const modal=document.getElementById('edit-teacher-modal');
+  const mc=document.getElementById('modal-content');
+  mc.innerHTML=`
+    <h3 style="font-weight:700;font-size:18px;margin-bottom:16px">Edit Data Guru</h3>
+    <div class="space-y-3 mb-4">
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">NAMA</label><input id="e-name" value="${teacher.name}"></div>
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">USERNAME</label><input id="e-user" value="${teacher.username}"></div>
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">PASSWORD</label><input id="e-pass" value="${teacher.password}"></div>
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">TIPE</label><select id="e-type" onchange="updateEditForm()"><option value="guru_kelas" ${teacher.type==='guru_kelas'?'selected':''}>Guru Kelas</option><option value="guru_mapel" ${teacher.type==='guru_mapel'?'selected':''}>Guru Mapel</option></select></div>
+      ${teacher.type==='guru_kelas'?`<div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">KELAS</label><select id="e-kelas">${APP.classes.map(c=>`<option ${teacher.kelas===c?'selected':''}>${c}</option>`).join('')}</select></div>`:`<div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">MATA PELAJARAN</label><select id="e-mapel">${APP.subjects.map(s=>`<option ${teacher.mapel===s?'selected':''}>${s}</option>`).join('')}</select></div>`}
+    </div>
+    <div class="flex gap-2 justify-end">
+      <button class="btn btn-secondary" onclick="document.getElementById('edit-teacher-modal').style.display='none'">Batal</button>
+      <button class="btn btn-primary" onclick="saveTeacherEdit('${id}')">Simpan Perubahan</button>
+    </div>`;
+  modal.style.display='flex';
+  lucide.createIcons();
+}
+
+function updateEditForm(){
+  const type=document.getElementById('e-type').value;
+  const form=document.getElementById('modal-content');
+  const last=form.lastElementChild.previousElementSibling;
+  if(type==='guru_kelas'){
+    last.innerHTML=`<label class="block text-xs font-semibold mb-1" style="color:var(--text2)">KELAS</label><select id="e-kelas">${APP.classes.map(c=>`<option>${c}</option>`).join('')}</select>`;
+  }else{
+    last.innerHTML=`<label class="block text-xs font-semibold mb-1" style="color:var(--text2)">MATA PELAJARAN</label><select id="e-mapel">${APP.subjects.map(s=>`<option>${s}</option>`).join('')}</select>`;
+  }
+}
+
+function saveTeacherEdit(id){
+  const teacher=APP.teachers.find(t=>t.id===id);
+  if(!teacher)return;
+  const name=document.getElementById('e-name').value.trim();
+  const username=document.getElementById('e-user').value.trim();
+  const password=document.getElementById('e-pass').value.trim();
+  const type=document.getElementById('e-type').value;
+  if(!name||!username||!password){toast('Semua field harus diisi','error');return}
+  teacher.name=name;teacher.username=username;teacher.password=password;teacher.type=type;
+  if(type==='guru_kelas'){teacher.kelas=document.getElementById('e-kelas').value;delete teacher.mapel;}
+  else{teacher.mapel=document.getElementById('e-mapel').value;delete teacher.kelas;}
+  toast('Data guru berhasil diperbarui');addLog(`Admin edit guru: ${name}`);
+  document.getElementById('edit-teacher-modal').style.display='none';renderView();
+}
+
+function deleteTeacher(id){
+  APP.teachers=APP.teachers.filter(t=>t.id!==id);toast('Guru dihapus');renderView();
+}
+
+function importTeachers(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();reader.onload=function(e){
+    const lines=e.target.result.split('\n').filter(l=>l.trim());let c=0;
+    lines.forEach((line,i)=>{
+      if(i===0&&line.toLowerCase().includes('username'))return;
+      const cols=line.split(/[,;\t]/);
+      if(cols.length>=4){
+        const t={id:'t-imp-'+Date.now()+'-'+i,username:cols[0].trim(),password:cols[1].trim(),name:cols[2].trim(),type:cols[3].trim()};
+        if(cols[4])t.type==='guru_kelas'?t.kelas=cols[4].trim():t.mapel=cols[4].trim();
+        APP.teachers.push(t);c++;
+      }
+    });
+    toast(`${c} guru berhasil diimport`);addLog(`Admin import ${c} guru`);renderView();
+  };reader.readAsText(file);
+}
+
+// ==================== ADMIN: STUDENTS ====================
+function renderStudentsAdminView(el){
+  const cls=APP.selectedClass;
+  const students=APP.students[cls]||[];
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">👦 Data Siswa</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Kelola data siswa per kelas</p>
+    <div class="flex gap-3 items-end mb-4 flex-wrap">
+      <div><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">FILTER KELAS</label><select onchange="APP.selectedClass=this.value;renderView()" style="width:auto">${APP.classes.map(c=>`<option ${c===cls?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div><input type="file" id="import-student-admin" accept=".csv" onchange="handleImportAdmin(event)" style="display:none"><button class="btn btn-primary btn-sm" onclick="document.getElementById('import-student-admin').click()"><i data-lucide="upload" style="width:14px;height:14px"></i> Import CSV</button></div>
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table>
+        <thead><tr><th>No</th><th>NIS</th><th>Nama</th><th>QR Code</th><th style="width:80px">Aksi</th></tr></thead>
+        <tbody>${students.map((st,i)=>`<tr><td>${i+1}</td><td style="font-size:12px;color:var(--text2)">${st.nis}</td><td style="font-weight:600">${st.name}</td>
+          <td><button class="btn btn-primary btn-sm" onclick="viewStudentQR('${st.id}','${cls}','${st.name}')" style="padding:4px 8px"><i data-lucide="qr-code" style="width:14px;height:14px"></i> Lihat</button></td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteStudent('${cls}','${st.id}')" style="padding:4px 8px"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:12px;color:var(--text2);margin-top:8px">Total: ${students.length} siswa</p>
+    <div id="qr-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+      <div class="modal-content" style="max-width:500px">
+        <h3 style="font-weight:700;font-size:18px;margin-bottom:4px" id="modal-student-name"></h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:16px" id="modal-student-nis"></p>
+        <div style="text-align:center;background:var(--bg);padding:20px;border-radius:12px;margin-bottom:16px">
+          <div id="qr-container" style="display:inline-block;background:#fff;padding:16px;border-radius:8px"></div>
+        </div>
+        <div style="background:var(--bg);padding:12px;border-radius:8px;margin-bottom:16px;font-family:monospace;font-size:11px;word-break:break-all;color:var(--text2)">
+          <p style="margin-bottom:4px"><strong>Kode QR:</strong></p>
+          <p id="qr-code-display"></p>
+        </div>
+        <div class="flex gap-2 justify-end flex-wrap">
+          <button class="btn btn-secondary btn-sm" onclick="downloadQR()"><i data-lucide="download" style="width:14px;height:14px"></i> Download</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('qr-modal').style.display='none'">Tutup</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function viewStudentQR(studentId,cls,name){
+  const qrData=`${studentId}@${cls}`;
+  const modal=document.getElementById('qr-modal');
+  document.getElementById('modal-student-name').textContent=name;
+  document.getElementById('modal-student-nis').textContent=`ID: ${studentId}`;
+  document.getElementById('qr-code-display').textContent=qrData;
+  
+  const container=document.getElementById('qr-container');
+  container.innerHTML='';
+  new QRCode(container,{text:qrData,width:300,height:300,colorDark:'#000',colorLight:'#fff'});
+  
+  modal.style.display='flex';
+}
+
+function downloadQR(){
+  const canvas=document.querySelector('#qr-container canvas');
+  if(!canvas)return;
+  const link=document.createElement('a');
+  link.href=canvas.toDataURL('image/png');
+  link.download=`qr-${document.getElementById('modal-student-name').textContent}.png`;
+  link.click();
+  toast('QR Code berhasil diunduh!');
+}
+
+// ==================== ADMIN: STUDENT PROFILE QR ====================
+function renderStudentProfileQRView(el){
+  const cls=APP.selectedClass;
+  const students=APP.students[cls]||[];
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">📇 QR Profil Siswa</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Generate QR Code riwayat kehadiran siswa — cocok untuk bagi rapot!</p>
+    <div class="card mb-4" style="background:var(--bg);border:1px solid var(--border);padding:16px">
+      <p style="font-size:12px;font-weight:600;margin-bottom:12px;color:var(--text2)">🔍 PILIH KELAS</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px">
+        ${APP.classes.map(c=>{
+          const count=APP.students[c]?.length||0;
+          return `<button class="card" style="padding:12px;text-align:center;cursor:pointer;border:2px solid ${cls===c?'#2a8fff':'var(--border)'};background:${cls===c?'rgba(42,143,255,.1)':'var(--bg2)'};transition:all .2s" onclick="APP.selectedClass='${c}';renderView()">
+            <div style="font-weight:700;font-size:16px;color:${cls===c?'#2a8fff':'var(--text)'}">${c}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px">${count} siswa</div>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4 mb-6">
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">📥 Generate Individual QR</h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Buat QR Code riwayat kehadiran untuk satu siswa</p>
+        <div class="mb-3"><label class="block text-xs font-semibold mb-1" style="color:var(--text2)">PILIH SISWA</label><select id="prof-student" style="width:100%">${students.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div>
+        <button class="btn btn-primary" onclick="generateStudentProfileQR('${cls}')" style="width:100%"><i data-lucide="qr-code" style="width:16px;height:16px"></i> Generate QR</button>
+        <p style="font-size:11px;color:var(--text2);margin-top:8px">💡 Scan untuk lihat riwayat kehadiran semester ini</p>
+      </div>
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">📄 Batch Download ZIP</h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Download semua QR profil kelas dalam satu file</p>
+        <button class="btn btn-primary" onclick="downloadAllProfileQR('${cls}')" style="width:100%;margin-bottom:12px"><i data-lucide="download" style="width:16px;height:16px"></i> Download ZIP</button>
+        <p style="font-size:11px;color:var(--text2)">📊 ${students.length} QR Code siap cetak</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">📋 Daftar Siswa Kelas ${cls}</h3>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>No</th><th>NIS</th><th>Nama</th><th style="text-align:center">Kehadiran</th><th style="width:100px">Aksi</th></tr></thead>
+          <tbody>${students.map((st,i)=>{
+            const today=getToday();
+            let totalHadir=0,totalAbsen=0;
+            // Count last 30 days of attendance
+            for(let d=0;d<30;d++){
+              const date=new Date();date.setDate(date.getDate()-d);
+              const dateStr=date.toISOString().split('T')[0];
+              const k=getAttKey(cls,dateStr,st.id);
+              const v=APP.attendance[k];
+              if(v==='hadir')totalHadir++;
+              else if(v)totalAbsen++;
+            }
+            const pct=totalHadir+totalAbsen?Math.round(totalHadir/(totalHadir+totalAbsen)*100):0;
+            return `<tr>
+              <td style="font-weight:700">${i+1}</td>
+              <td style="font-size:12px;color:var(--text2)">${st.nis}</td>
+              <td style="font-weight:600">${st.name}</td>
+              <td style="text-align:center"><span style="background:${pct>=80?'#d1fae5':pct>=60?'#fef3c7':'#fee2e2'};color:${pct>=80?'#065f46':pct>=60?'#92400e':'#991b1b'};padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700">${pct}%</span></td>
+              <td style="text-align:center"><button class="btn btn-primary btn-sm" onclick="viewProfileQRModal('${st.id}','${cls}','${st.name}')" style="padding:4px 8px"><i data-lucide="qr-code" style="width:14px;height:14px"></i></button></td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="profile-qr-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+      <div class="modal-content" style="max-width:600px">
+        <h3 style="font-weight:700;font-size:18px;margin-bottom:4px" id="pqr-name"></h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:16px" id="pqr-info"></p>
+        <div style="background:var(--bg);border-radius:12px;padding:20px;margin-bottom:16px">
+          <div style="text-align:center;margin-bottom:12px">
+            <div id="pqr-container" style="display:inline-block;background:#fff;padding:16px;border-radius:8px"></div>
+          </div>
+          <div style="background:rgba(42,143,255,.1);padding:12px;border-radius:8px;border-left:4px solid #2a8fff;text-align:center">
+            <p style="font-size:11px;color:var(--text2)">Scan dengan smartphone untuk lihat riwayat kehadiran semester ini</p>
+          </div>
+        </div>
+        <div id="pqr-data" style="background:var(--bg);padding:12px;border-radius:8px;margin-bottom:16px;font-family:monospace;font-size:10px;color:var(--text2);word-break:break-all;max-height:120px;overflow-y:auto"></div>
+        <div class="flex gap-2 justify-end flex-wrap">
+          <button class="btn btn-secondary btn-sm" onclick="downloadProfileQR()"><i data-lucide="download" style="width:14px;height:14px"></i> Download</button>
+          <button class="btn btn-secondary btn-sm" onclick="printProfileQRCard()"><i data-lucide="printer" style="width:14px;height:14px"></i> Print Card</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('profile-qr-modal').style.display='none'">Tutup</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function generateStudentProfileQR(cls){
+  const studentId=document.getElementById('prof-student').value;
+  const student=APP.students[cls].find(s=>s.id===studentId);
+  if(!student){toast('Siswa tidak ditemukan','error');return}
+  viewProfileQRModal(studentId,cls,student.name);
+}
+
+function viewProfileQRModal(studentId,cls,name){
+  // Collect attendance data for this student
+  let attendanceData=[];
+  for(let d=0;d<90;d++){
+    const date=new Date();date.setDate(date.getDate()-d);
+    const dateStr=date.toISOString().split('T')[0];
+    const k=getAttKey(cls,dateStr,studentId);
+    const v=APP.attendance[k];
+    if(v)attendanceData.push({date:dateStr,status:v});
+  }
+  
+  let hadir=0,alfa=0,sakit=0,izin=0;
+  attendanceData.forEach(a=>{
+    if(a.status==='hadir')hadir++;
+    else if(a.status==='alfa')alfa++;
+    else if(a.status==='sakit')sakit++;
+    else if(a.status==='izin')izin++;
+  });
+  
+  // Create profile QR data (encoded as JSON string with student + attendance summary)
+  const profileData={studentId,name,nis:APP.students[cls].find(s=>s.id===studentId)?.nis||'',kelas:cls,hadir,alfa,sakit,izin,totalAbsen:attendanceData.length};
+  const qrContent=JSON.stringify(profileData);
+  
+  const modal=document.getElementById('profile-qr-modal');
+  document.getElementById('pqr-name').textContent=name;
+  document.getElementById('pqr-info').textContent=`NIS: ${profileData.nis} | Kelas: ${cls} | Periode: 90 hari terakhir`;
+  document.getElementById('pqr-data').textContent=qrContent;
+  
+  const container=document.getElementById('pqr-container');
+  container.innerHTML='';
+  new QRCode(container,{text:qrContent,width:300,height:300,colorDark:'#2a8fff',colorLight:'#f0f4f8'});
+  
+  // Store current profile for download
+  window.currentProfileQR={name,studentId,cls,data:profileData,qrContent};
+  modal.style.display='flex';
+}
+
+function downloadProfileQR(){
+  const canvas=document.querySelector('#pqr-container canvas');
+  if(!canvas||!window.currentProfileQR)return;
+  const link=document.createElement('a');
+  link.href=canvas.toDataURL('image/png');
+  link.download=`profil_${window.currentProfileQR.name.replace(/\s/g,'_')}_${window.currentProfileQR.studentId}.png`;
+  link.click();
+  toast('QR Profil berhasil diunduh!');
+}
+
+function printProfileQRCard(){
+  if(!window.currentProfileQR)return;
+  const p=window.currentProfileQR;
+  const canvas=document.querySelector('#pqr-container canvas');
+  const qrImg=canvas?canvas.toDataURL('image/png'):'';
+  const pct=p.data.totalAbsen?Math.round(p.data.hadir/p.data.totalAbsen*100):0;
+  
+  const html=`<html><head><title>Kartu Profil ${p.name}</title><style>
+    body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#f0f0f0}
+    .card{width:8.5cm;height:13cm;background:#fff;border:2px solid #2a8fff;border-radius:8px;padding:10mm;box-sizing:border-box;page-break-inside:avoid;margin:10mm auto;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+    .header{border-bottom:2px solid #2a8fff;padding-bottom:8mm;margin-bottom:8mm;text-align:center}
+    .header-title{font-weight:bold;font-size:14px;color:#2a8fff}
+    .student-info{margin-bottom:8mm}
+    .info-row{font-size:10px;margin-bottom:3mm}
+    .info-label{color:#666;font-weight:bold}
+    .info-value{color:#000}
+    .qr-section{text-align:center;margin:8mm 0}
+    .qr-section img{width:100%;height:auto;border-radius:4px}
+    .stats{font-size:9px;margin-top:8mm;padding-top:8mm;border-top:1px solid #ddd;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center}
+    .stat-item{background:#f0f4f8;padding:4px;border-radius:4px}
+    .stat-num{font-weight:bold;font-size:12px;color:#2a8fff}
+    .stat-label{font-size:8px;color:#666;margin-top:1px}
+    .footer{font-size:8px;color:#999;margin-top:6mm;text-align:center}
+  </style></head><body>
+    <div class="card">
+      <div class="header">
+        <div class="header-title">📇 KARTU PROFIL SISWA</div>
+        <div style="font-size:8px;color:#666;margin-top:2px">${new Date().toLocaleDateString('id-ID')}</div>
+      </div>
+      <div class="student-info">
+        <div class="info-row"><span class="info-label">Nama:</span> <span class="info-value">${p.data.name}</span></div>
+        <div class="info-row"><span class="info-label">NIS:</span> <span class="info-value">${p.data.nis}</span></div>
+        <div class="info-row"><span class="info-label">Kelas:</span> <span class="info-value">${p.data.kelas}</span></div>
+        <div class="info-row"><span class="info-label">Kehadiran:</span> <span class="info-value" style="color:${pct>=80?'#10b981':pct>=60?'#f59e0b':'#ef4444'};font-weight:bold">${pct}%</span></div>
+      </div>
+      <div class="qr-section">${qrImg?`<img src="${qrImg}" alt="QR Code">`:''}</div>
+      <div class="stats">
+        <div class="stat-item"><div class="stat-num">${p.data.hadir}</div><div class="stat-label">Hadir</div></div>
+        <div class="stat-item"><div class="stat-num">${p.data.alfa}</div><div class="stat-label">Alfa</div></div>
+        <div class="stat-item"><div class="stat-num">${p.data.sakit}</div><div class="stat-label">Sakit</div></div>
+        <div class="stat-item"><div class="stat-num">${p.data.izin}</div><div class="stat-label">Izin</div></div>
+      </div>
+      <div class="footer">Scan QR untuk lihat detail lengkap riwayat kehadiran</div>
+    </div>
+  </body></html>`;
+  
+  const win=window.open('','_blank');win.document.write(html);
+  setTimeout(()=>win.print(),500);
+}
+
+function downloadAllProfileQR(cls){
+  const students=APP.students[cls]||[];
+  if(!students.length){toast('Belum ada siswa di kelas ini','error');return}
+  
+  showProgress();
+  toast(`Membuat ${students.length} QR Profile untuk kelas ${cls}...`);
+  let count=0;
+  
+  students.forEach((st,i)=>{
+    setTimeout(()=>{
+      let totalHadir=0,totalAbsen=0;
+      for(let d=0;d<90;d++){
+        const date=new Date();date.setDate(date.getDate()-d);
+        const dateStr=date.toISOString().split('T')[0];
+        const k=getAttKey(cls,dateStr,st.id);
+        const v=APP.attendance[k];
+        if(v==='hadir')totalHadir++;
+        else if(v)totalAbsen++;
+      }
+      
+      const profileData={studentId:st.id,name:st.name,nis:st.nis,kelas:cls,hadir:totalHadir,alfa:0,sakit:0,izin:0,totalAbsen};
+      const qrContent=JSON.stringify(profileData);
+      
+      const container=document.createElement('div');
+      document.body.appendChild(container);
+      new QRCode(container,{text:qrContent,width:200,height:200,colorDark:'#2a8fff',colorLight:'#f0f4f8'});
+      
+      setTimeout(()=>{
+        const qrCanvas=container.querySelector('canvas');
+        if(qrCanvas){
+          const link=document.createElement('a');
+          link.href=qrCanvas.toDataURL('image/png');
+          link.download=`profil_${st.name.replace(/\s/g,'_')}_${st.nis}.png`;
+          link.click();
+        }
+        document.body.removeChild(container);
+        count++;
+        if(count===students.length){
+          hideProgress();
+          toast(`${students.length} QR Profile berhasil diunduh!`);
+        }
+      },100);
+    },i*500);
+  });
+  
+  addLog(`Admin generate profile QR ${students.length} siswa kelas ${cls}`);
+}
+
+// ==================== ADMIN: SUBJECTS ====================
+function renderSubjectsView(el){
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">📚 Mata Pelajaran</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Kelola daftar mata pelajaran</p>
+    <div class="card mb-4" style="max-width:500px">
+      <div class="flex gap-2"><input id="new-subject" placeholder="Nama mata pelajaran baru"><button class="btn btn-success" onclick="addSubject()"><i data-lucide="plus" style="width:16px;height:16px"></i></button></div>
+      <div class="mt-3"><input type="file" id="import-subj" accept=".csv" onchange="importSubjects(event)" style="display:none"><button class="btn btn-primary btn-sm" onclick="document.getElementById('import-subj').click()"><i data-lucide="upload" style="width:14px;height:14px"></i> Import CSV</button></div>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3" style="max-width:600px">
+      ${APP.subjects.map((s,i)=>`<div class="card flex items-center justify-between" style="padding:12px 16px"><span style="font-weight:600;font-size:14px">${s}</span><button class="btn btn-danger btn-sm" onclick="deleteSubject(${i})" style="padding:4px 8px"><i data-lucide="x" style="width:14px;height:14px"></i></button></div>`).join('')}
+    </div>`;
+}
+
+function addSubject(){const v=document.getElementById('new-subject').value.trim();if(!v)return;APP.subjects.push(v);toast(`Mapel ${v} ditambahkan`);addLog(`Admin menambah mapel: ${v}`);renderView()}
+function deleteSubject(i){APP.subjects.splice(i,1);toast('Mapel dihapus');renderView()}
+function importSubjects(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();reader.onload=function(e){
+    const lines=e.target.result.split('\n').filter(l=>l.trim());let c=0;
+    lines.forEach((line,i)=>{if(i===0&&line.toLowerCase().includes('nama'))return;const name=line.trim();if(name){APP.subjects.push(name);c++;}});
+    toast(`${c} mapel diimport`);renderView();
+  };reader.readAsText(file);
+}
+
+// ==================== ADMIN: ANNOUNCEMENTS ====================
+function renderAnnouncementsView(el){
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">📢 Pengumuman</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Posting pengumuman yang tampil di halaman login guru</p>
+    <div class="card mb-4" style="max-width:600px">
+      <textarea id="ann-text" placeholder="Tulis pengumuman..." rows="3" style="resize:vertical"></textarea>
+      <button class="btn btn-primary mt-3" onclick="addAnnouncement()"><i data-lucide="send" style="width:16px;height:16px"></i> Posting</button>
+    </div>
+    <div class="space-y-3" style="max-width:600px">
+      ${APP.announcements.length?APP.announcements.map((a,i)=>`
+        <div class="card flex items-start justify-between gap-3">
+          <div><p style="font-size:11px;color:var(--text2);margin-bottom:2px">${a.date}</p><p style="font-size:14px">${a.text}</p></div>
+          <button class="btn btn-danger btn-sm" onclick="deleteAnn(${i})" style="flex-shrink:0;padding:4px 8px"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
+        </div>`).join(''):`<div class="card text-center p-6" style="color:var(--text2)">Belum ada pengumuman</div>`}
+    </div>`;
+}
+
+function addAnnouncement(){
+  const text=document.getElementById('ann-text').value.trim();if(!text)return;
+  APP.announcements.unshift({text,date:new Date().toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})});
+  toast('Pengumuman berhasil diposting');addLog('Admin posting pengumuman');renderView();
+}
+function deleteAnn(i){APP.announcements.splice(i,1);toast('Pengumuman dihapus');renderView()}
+
+// ==================== ADMIN: EMAIL SUMMARY ====================
+function renderEmailView(el){
+  const totalStudents=Object.values(APP.students).reduce((s,a)=>s+a.length,0);
+  const today=getToday();
+  let h=0,a=0,s=0,iz=0;
+  APP.classes.forEach(cls=>{
+    (APP.students[cls]||[]).forEach(st=>{
+      const v=APP.attendance[getAttKey(cls,today,st.id)];
+      if(v==='hadir')h++;else if(v==='alfa')a++;else if(v==='sakit')s++;else if(v==='izin')iz++;
+    });
+  });
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">📧 Ringkasan Email</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Ringkasan otomatis setiap hari jam 15:00</p>
+    <div class="card" style="max-width:600px">
+      <div style="background:var(--bg);border-radius:12px;padding:20px">
+        <div style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px">
+          <p style="font-size:11px;color:var(--text2)">From: sistem@${APP.schoolName.toLowerCase().replace(/\s/g,'')}.sch.id</p>
+          <p style="font-size:11px;color:var(--text2)">To: admin@${APP.schoolName.toLowerCase().replace(/\s/g,'')}.sch.id</p>
+          <p style="font-weight:700;margin-top:6px">📊 Ringkasan Harian — ${new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</p>
+        </div>
+        <p style="font-size:14px;margin-bottom:12px">Halo Admin,</p>
+        <p style="font-size:14px;margin-bottom:12px">Berikut ringkasan kehadiran hari ini di <strong>${APP.schoolName}</strong>:</p>
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div style="background:#d1fae5;padding:12px;border-radius:8px;text-align:center"><div style="font-size:20px;font-weight:800;color:#065f46">${totalStudents?Math.round(h/totalStudents*100):0}%</div><div style="font-size:11px;color:#065f46;font-weight:600">Hadir (${h})</div></div>
+          <div style="background:#fee2e2;padding:12px;border-radius:8px;text-align:center"><div style="font-size:20px;font-weight:800;color:#991b1b">${totalStudents?Math.round(a/totalStudents*100):0}%</div><div style="font-size:11px;color:#991b1b;font-weight:600">Alfa (${a})</div></div>
+          <div style="background:#fef3c7;padding:12px;border-radius:8px;text-align:center"><div style="font-size:20px;font-weight:800;color:#92400e">${totalStudents?Math.round(s/totalStudents*100):0}%</div><div style="font-size:11px;color:#92400e;font-weight:600">Sakit (${s})</div></div>
+          <div style="background:#dbeafe;padding:12px;border-radius:8px;text-align:center"><div style="font-size:20px;font-weight:800;color:#1e40af">${totalStudents?Math.round(iz/totalStudents*100):0}%</div><div style="font-size:11px;color:#1e40af;font-weight:600">Izin (${iz})</div></div>
+        </div>
+        <p style="font-size:13px;color:var(--text2)">Total siswa: ${totalStudents} | Sudah diabsen: ${h+a+s+iz}</p>
+      </div>
+      <p style="font-size:11px;color:var(--text2);margin-top:12px;text-align:center">ℹ️ Ini adalah preview. Fitur pengiriman email memerlukan integrasi server — <strong>Demo</strong></p>
+    </div>`;
+}
+
+// ==================== ADMIN: SETTINGS ====================
+function renderSettingsView(el){
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">⚙️ Pengaturan</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Konfigurasi tampilan aplikasi</p>
+    <div class="space-y-4" style="max-width:600px">
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">🏫 Nama Sekolah</h3>
+        <div class="flex gap-2"><input id="set-name" value="${APP.schoolName}" placeholder="Nama sekolah"><button class="btn btn-primary" onclick="saveSchoolName()">Simpan</button></div>
+      </div>
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">🖼️ Logo Sekolah</h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Masukkan link gambar dari Google Drive atau URL langsung</p>
+        <p style="font-size:11px;color:var(--text2);margin-bottom:8px">📐 Ukuran rekomendasi: 200x200px (maks 500x500px), format PNG/JPG</p>
+        <p style="font-size:11px;color:#f59e0b;margin-bottom:12px">💡 Tip Google Drive: Ubah link <code>https://drive.google.com/file/d/FILE_ID/view</code> menjadi <code>https://lh3.googleusercontent.com/d/FILE_ID</code></p>
+        <div class="flex gap-2"><input id="set-logo" value="${APP.schoolLogo}" placeholder="https://lh3.googleusercontent.com/d/FILE_ID"><button class="btn btn-primary" onclick="saveSchoolLogo()">Simpan</button></div>
+        ${APP.schoolLogo?`<div class="mt-3"><img src="${APP.schoolLogo}" style="width:80px;height:80px;border-radius:12px;object-fit:cover;border:2px solid var(--border)" loading="lazy" onerror="console.error('Logo failed:',this.src);this.style.background='#e5e7eb';this.alt='Logo gagal dimuat'"></div>`:''}
+      </div>
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">🎨 Tema</h3>
+        <div class="flex gap-3">
+          <button class="btn ${!APP.darkMode?'btn-primary':'btn-secondary'}" onclick="if(APP.darkMode){toggleDark()}">☀️ Light</button>
+          <button class="btn ${APP.darkMode?'btn-primary':'btn-secondary'}" onclick="if(!APP.darkMode){toggleDark()}">🌙 Dark</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ==================== ADMIN: ACADEMIC CALENDAR ====================
+// Store selected calendar month
+APP.calendarMonth=APP.calendarMonth||new Date().getMonth();
+APP.calendarYear=APP.calendarYear||new Date().getFullYear();
+
+function renderAcademicCalendarView(el){
+  const today=getToday();
+  const currentMonth=APP.calendarMonth;
+  const currentYear=APP.calendarYear;
+  
+  // Get holidays in current month
+  const monthStart=new Date(currentYear,currentMonth,1);
+  const monthEnd=new Date(currentYear,currentMonth+1,0);
+  
+  const holidaysThisMonth=APP.academicCalendar.filter(h=>{
+    const hDate=new Date(h.date);
+    return hDate>=monthStart && hDate<=monthEnd;
+  });
+  
+  // Generate calendar grid
+  const firstDay=monthStart.getDay();
+  const daysInMonth=monthEnd.getDate();
+  let calendarHTML='';
+  
+  const dayLabels=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+  calendarHTML+=`<tr style="background:var(--bg3)">`;
+  dayLabels.forEach(d=>calendarHTML+=`<th style="padding:8px;text-align:center;font-size:12px;font-weight:700">${d}</th>`);
+  calendarHTML+=`</tr><tr>`;
+  
+  for(let i=0;i<firstDay;i++)calendarHTML+=`<td style="background:var(--bg)"></td>`;
+  
+  for(let day=1;day<=daysInMonth;day++){
+    const dateStr=`${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const holiday=APP.academicCalendar.find(h=>h.date===dateStr);
+    const isToday=dateStr===today;
+    const dayOfWeek=(firstDay+day-1)%7;
+    
+    let cellStyle='padding:12px;text-align:center;border:1px solid var(--border);height:60px;vertical-align:top;font-size:12px;';
+    let dayHTML=`<div style="font-weight:700;margin-bottom:4px">${day}</div>`;
+    
+    if(holiday){
+      const colors={libur_nasional:'#fecaca',libur_sekolah:'#fed7aa',cuti_bersama:'#dbeafe'};
+      const textColors={libur_nasional:'#991b1b',libur_sekolah:'#92400e',cuti_bersama:'#1e40af'};
+      cellStyle+=`background:${colors[holiday.type]||'#fee2e2'};color:${textColors[holiday.type]||'#991b1b'};font-weight:700`;
+      dayHTML+=`<div style="font-size:10px;margin:2px 0">${holiday.type==='libur_nasional'?'🇮🇩':holiday.type==='libur_sekolah'?'🏫':'🎉'}</div>`;
+      dayHTML+=`<div style="font-size:9px;line-height:1.2">${holiday.reason.slice(0,15)}</div>`;
+    }else if(isToday){
+      cellStyle+='background:#d1fae5;border:2px solid #10b981';
+      dayHTML+=`<div style="font-size:9px;color:#065f46;font-weight:600">Hari Ini</div>`;
+    }
+    
+    calendarHTML+=`<td style="${cellStyle}">${dayHTML}</td>`;
+    
+    if(dayOfWeek===6)calendarHTML+=`</tr><tr>`;
+  }
+  
+  calendarHTML+=`</tr>`;
+  
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">📅 Kalender Akademik</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Kelola hari libur dan non-mengajar — Menu absen akan terkunci otomatis pada tanggal ini</p>
+    
+    <div class="grid md:grid-cols-3 gap-4 mb-6">
+      <div class="stat-card" style="background:linear-gradient(135deg,#fecaca,#fee2e2)">
+        <div style="font-size:28px;font-weight:800;color:#991b1b">${APP.academicCalendar.filter(h=>h.type==='libur_nasional').length}</div>
+        <div style="font-size:12px;color:#991b1b;font-weight:600">Libur Nasional</div>
+      </div>
+      <div class="stat-card" style="background:linear-gradient(135deg,#fed7aa,#fecab0)">
+        <div style="font-size:28px;font-weight:800;color:#92400e">${APP.academicCalendar.filter(h=>h.type==='libur_sekolah').length}</div>
+        <div style="font-size:12px;color:#92400e;font-weight:600">Libur Sekolah</div>
+      </div>
+      <div class="stat-card" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe)">
+        <div style="font-size:28px;font-weight:800;color:#1e40af">${APP.academicCalendar.filter(h=>h.type==='cuti_bersama').length}</div>
+        <div style="font-size:12px;color:#1e40af;font-weight:600">Cuti Bersama</div>
+      </div>
+    </div>
+    
+    <div class="card mb-6" style="max-width:600px">
+      <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">➕ Tambah Hari Libur/Cuti</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div>
+          <label class="block text-xs font-semibold mb-1" style="color:var(--text2)">TANGGAL</label>
+          <input id="cal-date" type="date">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1" style="color:var(--text2)">JENIS</label>
+          <select id="cal-type">
+            <option value="libur_nasional">🇮🇩 Libur Nasional</option>
+            <option value="libur_sekolah">🏫 Libur Sekolah</option>
+            <option value="cuti_bersama">🎉 Cuti Bersama</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="block text-xs font-semibold mb-1" style="color:var(--text2)">ALASAN/KETERANGAN</label>
+        <input id="cal-reason" placeholder="Contoh: Hari Kemerdekaan, UKK, dll">
+      </div>
+      <button class="btn btn-success" onclick="addHoliday()"><i data-lucide="plus" style="width:16px;height:16px"></i> Tambah</button>
+    </div>
+    
+    <div class="card mb-6">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="APP.calendarMonth--;if(APP.calendarMonth<0){APP.calendarMonth=11;APP.calendarYear--;}renderView()" style="display:flex;align-items:center;gap:6px"><i data-lucide="chevron-left" style="width:16px;height:16px"></i> Bulan Sebelumnya</button>
+        <h3 style="font-weight:700;font-size:16px;margin:0;min-width:200px;text-align:center">${new Date(currentYear,currentMonth).toLocaleDateString('id-ID',{month:'long',year:'numeric'})}</h3>
+        <button class="btn btn-secondary btn-sm" onclick="APP.calendarMonth++;if(APP.calendarMonth>11){APP.calendarMonth=0;APP.calendarYear++;}renderView()" style="display:flex;align-items:center;gap:6px">Bulan Selanjutnya <i data-lucide="chevron-right" style="width:16px;height:16px"></i></button>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse">
+          ${calendarHTML}
+        </table>
+      </div>
+      <div style="margin-top:12px;text-align:center">
+        <button class="btn btn-secondary btn-sm" onclick="APP.calendarMonth=new Date().getMonth();APP.calendarYear=new Date().getFullYear();renderView()" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="calendar" style="width:14px;height:14px"></i> Ke Bulan Ini</button>
+      </div>
+    </div>
+    
+    ${APP.academicCalendar.length>0?`
+    <div class="card">
+      <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">📋 Daftar Semua Hari Libur/Cuti</h3>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Hari</th>
+              <th>Jenis</th>
+              <th>Alasan</th>
+              <th style="width:80px">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${APP.academicCalendar.sort((a,b)=>new Date(a.date)-new Date(b.date)).map((h,i)=>{
+              const d=new Date(h.date);
+              const dayName=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][d.getDay()];
+              const typeLabels={libur_nasional:'🇮🇩 Libur Nasional',libur_sekolah:'🏫 Libur Sekolah',cuti_bersama:'🎉 Cuti Bersama'};
+              const colors={libur_nasional:'#fee2e2',libur_sekolah:'#fef3c7',cuti_bersama:'#dbeafe'};
+              return `<tr>
+                <td style="font-weight:600">${d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</td>
+                <td style="font-size:12px;color:var(--text2)">${dayName}</td>
+                <td style="text-align:center"><span style="background:${colors[h.type]};padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700">${typeLabels[h.type]}</span></td>
+                <td style="font-size:13px">${h.reason}</td>
+                <td style="text-align:center"><button class="btn btn-danger btn-sm" onclick="deleteHoliday('${h.date}')" style="padding:4px 8px"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    `:''}
+  `;
+}
+
+function addHoliday(){
+  const date=document.getElementById('cal-date').value;
+  const type=document.getElementById('cal-type').value;
+  const reason=document.getElementById('cal-reason').value.trim();
+  
+  if(!date){toast('Tanggal harus diisi','error');return}
+  if(!reason){toast('Alasan harus diisi','error');return}
+  
+  // Check if already exists
+  if(APP.academicCalendar.find(h=>h.date===date)){
+    toast('Tanggal ini sudah terdaftar','error');
+    return;
+  }
+  
+  APP.academicCalendar.push({date,type,reason});
+  toast(`${reason} ditambahkan ke kalender akademik`);
+  addLog(`Admin menambah libur: ${reason} (${date})`);
+  
+  document.getElementById('cal-date').value='';
+  document.getElementById('cal-reason').value='';
+  renderView();
+}
+
+function deleteHoliday(date){
+  APP.academicCalendar=APP.academicCalendar.filter(h=>h.date!==date);
+  toast('Hari libur dihapus');
+  renderView();
+}
+
+function isHoliday(dateStr){
+  return APP.academicCalendar.some(h=>h.date===dateStr);
+}
+
+function renderSettingsView(el){
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">⚙️ Pengaturan</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Konfigurasi tampilan aplikasi</p>
+    <div class="space-y-4" style="max-width:600px">
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">🏫 Nama Sekolah</h3>
+        <div class="flex gap-2"><input id="set-name" value="${APP.schoolName}" placeholder="Nama sekolah"><button class="btn btn-primary" onclick="saveSchoolName()">Simpan</button></div>
+      </div>
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">🖼️ Logo Sekolah</h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Masukkan link gambar dari Google Drive atau URL langsung</p>
+        <p style="font-size:11px;color:var(--text2);margin-bottom:8px">📐 Ukuran rekomendasi: 200x200px (maks 500x500px), format PNG/JPG</p>
+        <p style="font-size:11px;color:#f59e0b;margin-bottom:12px">💡 Tip Google Drive: Ubah link <code>https://drive.google.com/file/d/FILE_ID/view</code> menjadi <code>https://lh3.googleusercontent.com/d/FILE_ID</code></p>
+        <div class="flex gap-2"><input id="set-logo" value="${APP.schoolLogo}" placeholder="https://lh3.googleusercontent.com/d/FILE_ID"><button class="btn btn-primary" onclick="saveSchoolLogo()">Simpan</button></div>
+        ${APP.schoolLogo?`<div class="mt-3"><img src="${APP.schoolLogo}" style="width:80px;height:80px;border-radius:12px;object-fit:cover;border:2px solid var(--border)" loading="lazy" onerror="console.error('Logo failed:',this.src);this.style.background='#e5e7eb';this.alt='Logo gagal dimuat'"></div>`:''}
+      </div>
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">🎨 Tema</h3>
+        <div class="flex gap-3">
+          <button class="btn ${!APP.darkMode?'btn-primary':'btn-secondary'}" onclick="if(APP.darkMode){toggleDark()}">☀️ Light</button>
+          <button class="btn ${APP.darkMode?'btn-primary':'btn-secondary'}" onclick="if(!APP.darkMode){toggleDark()}">🌙 Dark</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ==================== ADMIN: SETTINGS ====================
+function renderSettingsView(el){
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">⚙️ Pengaturan</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Konfigurasi tampilan aplikasi</p>
+    <div class="space-y-4" style="max-width:600px">
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">🏫 Nama Sekolah</h3>
+        <div class="flex gap-2"><input id="set-name" value="${APP.schoolName}" placeholder="Nama sekolah"><button class="btn btn-primary" onclick="saveSchoolName()">Simpan</button></div>
+      </div>
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">🖼️ Logo Sekolah</h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Masukkan link gambar dari Google Drive atau URL langsung</p>
+        <p style="font-size:11px;color:var(--text2);margin-bottom:8px">📐 Ukuran rekomendasi: 200x200px (maks 500x500px), format PNG/JPG</p>
+        <p style="font-size:11px;color:#f59e0b;margin-bottom:12px">💡 Tip Google Drive: Ubah link <code>https://drive.google.com/file/d/FILE_ID/view</code> menjadi <code>https://lh3.googleusercontent.com/d/FILE_ID</code></p>
+        <div class="flex gap-2"><input id="set-logo" value="${APP.schoolLogo}" placeholder="https://lh3.googleusercontent.com/d/FILE_ID"><button class="btn btn-primary" onclick="saveSchoolLogo()">Simpan</button></div>
+        ${APP.schoolLogo?`<div class="mt-3"><img src="${APP.schoolLogo}" style="width:80px;height:80px;border-radius:12px;object-fit:cover;border:2px solid var(--border)" loading="lazy" onerror="console.error('Logo failed:',this.src);this.style.background='#e5e7eb';this.alt='Logo gagal dimuat'"></div>`:''}
+      </div>
+      <div class="card">
+        <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">🎨 Tema</h3>
+        <div class="flex gap-3">
+          <button class="btn ${!APP.darkMode?'btn-primary':'btn-secondary'}" onclick="if(APP.darkMode){toggleDark()}">☀️ Light</button>
+          <button class="btn ${APP.darkMode?'btn-primary':'btn-secondary'}" onclick="if(!APP.darkMode){toggleDark()}">🌙 Dark</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ==================== ADMIN: HOME VISIT ====================
+function renderHomeVisitView(el){
+  // Find all students with 3+ consecutive sick days (sakit)
+  const today=getToday();
+  let needsVisit=[];
+  
+  APP.classes.forEach(cls=>{
+    (APP.students[cls]||[]).forEach(st=>{
+      let consecutiveSick=0;
+      let lastDate=null;
+      
+      // Check last 30 days
+      for(let d=0;d<30;d++){
+        const date=new Date();date.setDate(date.getDate()-d);
+        const dateStr=date.toISOString().split('T')[0];
+        const k=getAttKey(cls,dateStr,st.id);
+        const v=APP.attendance[k];
+        
+        if(v==='sakit'){
+          consecutiveSick++;
+          if(!lastDate)lastDate=dateStr;
+        }else{
+          if(consecutiveSick>=3){
+            needsVisit.push({
+              studentId:st.id,className:cls,studentName:st.name,nis:st.nis,
+              sickDays:consecutiveSick,lastSickDate:lastDate
+            });
+          }
+          consecutiveSick=0;
+          lastDate=null;
+        }
+      }
+      
+      if(consecutiveSick>=3){
+        needsVisit.push({
+          studentId:st.id,className:cls,studentName:st.name,nis:st.nis,
+          sickDays:consecutiveSick,lastSickDate:lastDate
+        });
+      }
+    });
+  });
+  
+  const pendingVisits=needsVisit.filter(v=>!APP.homeVisits[v.studentId] || !APP.homeVisits[v.studentId].lastVisitDate);
+  const completedVisits=needsVisit.filter(v=>APP.homeVisits[v.studentId] && APP.homeVisits[v.studentId].lastVisitDate);
+  
+  el.innerHTML=`
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">🏠 Home Visit (Kunjungan Rumah)</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Pantau siswa yang sakit lebih dari 3 hari dan upload bukti kunjungan rumah</p>
+    
+    <div class="grid md:grid-cols-3 gap-4 mb-6">
+      <div class="stat-card" style="background:linear-gradient(135deg,#fef3c7,#fde68a)">
+        <div style="font-size:28px;font-weight:800;color:#92400e">${needsVisit.length}</div>
+        <div style="font-size:12px;color:#92400e;font-weight:600">Total Perlu Dikunjungi</div>
+      </div>
+      <div class="stat-card" style="background:linear-gradient(135deg,#fee2e2,#fecaca)">
+        <div style="font-size:28px;font-weight:800;color:#991b1b">${pendingVisits.length}</div>
+        <div style="font-size:12px;color:#991b1b;font-weight:600">Pending Home Visit</div>
+      </div>
+      <div class="stat-card" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0)">
+        <div style="font-size:28px;font-weight:800;color:#065f46">${completedVisits.length}</div>
+        <div style="font-size:12px;color:#065f46;font-weight:600">Sudah Dikunjungi</div>
+      </div>
+    </div>
+    
+    ${pendingVisits.length>0?`
+    <div class="card mb-6" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b">
+      <h3 style="font-weight:700;font-size:15px;margin-bottom:12px;color:#92400e">⚠️ Siswa yang Memerlukan Home Visit</h3>
+      <div class="space-y-2">
+        ${pendingVisits.map(v=>`
+          <div style="background:rgba(255,255,255,.8);padding:12px;border-radius:8px;border-left:4px solid #f59e0b">
+            <div style="display:flex;justify-content:space-between;align-items:start;gap:12px">
+              <div>
+                <p style="font-weight:700;font-size:14px;color:#1e293b">${v.studentName}</p>
+                <p style="font-size:12px;color:#64748b;margin-top:2px">📝 NIS: ${v.nis} | Kelas: ${v.className}</p>
+                <p style="font-size:12px;color:#92400e;margin-top:4px">🤒 Sakit ${v.sickDays} hari berturut-turut (terakhir: ${v.lastSickDate})</p>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="openHomeVisitModal('${v.studentId}','${v.className}','${v.studentName}','${v.nis}')" style="flex-shrink:0;padding:6px 12px"><i data-lucide="upload" style="width:14px;height:14px"></i> Upload Bukti</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    `:''}
+    
+    ${completedVisits.length>0?`
+    <div class="card">
+      <h3 style="font-weight:700;font-size:15px;margin-bottom:12px">✅ Riwayat Kunjungan yang Sudah Dilakukan</h3>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Nama Siswa</th>
+              <th>NIS</th>
+              <th>Kelas</th>
+              <th style="text-align:center">Hari Sakit</th>
+              <th style="text-align:center">Tanggal Kunjungan</th>
+              <th style="width:120px">Bukti</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${completedVisits.map(v=>{
+              const visitData=APP.homeVisits[v.studentId];
+              return `<tr>
+                <td style="font-weight:600">${v.studentName}</td>
+                <td style="font-size:12px;color:var(--text2)">${v.nis}</td>
+                <td style="text-align:center">${v.className}</td>
+                <td style="text-align:center"><span style="background:#fef3c7;color:#92400e;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700">${v.sickDays} hari</span></td>
+                <td style="text-align:center;font-size:12px;color:var(--text2)">${visitData?.lastVisitDate||'-'}</td>
+                <td style="text-align:center"><button class="btn btn-primary btn-sm" onclick="viewHomeVisitEvidence('${v.studentId}')" style="padding:4px 8px"><i data-lucide="image" style="width:14px;height:14px"></i> Lihat</button></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    `:''}
+    
+    <div id="home-visit-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+      <div class="modal-content" style="max-width:600px">
+        <h3 style="font-weight:700;font-size:18px;margin-bottom:4px" id="hv-name"></h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:16px" id="hv-info"></p>
+        
+        <div style="background:var(--bg);padding:12px;border-radius:8px;margin-bottom:16px;border-left:4px solid #f59e0b">
+          <p style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">📋 Data Kunjungan</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:11px">
+            <div>
+              <p style="color:var(--text2)">Tanggal Kunjungan:</p>
+              <input id="hv-date" type="date" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+            <div>
+              <p style="color:var(--text2)">Waktu:</p>
+              <input id="hv-time" type="time" value="${new Date().toTimeString().slice(0,5)}">
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <p style="color:var(--text2);font-size:11px;margin-bottom:6px">Catatan Kunjungan:</p>
+            <textarea id="hv-notes" placeholder="Deskripsikan kondisi siswa, rekomendasi, dll..." rows="3" style="resize:vertical"></textarea>
+          </div>
+        </div>
+        
+        <div style="background:var(--bg);padding:12px;border-radius:8px;margin-bottom:16px">
+          <p style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px">📸 Upload Bukti Foto</p>
+          <p style="font-size:11px;color:var(--text2);margin-bottom:8px">Maksimal 5 foto, format: JPG/PNG, ukuran maks 2MB per foto</p>
+          <input type="file" id="hv-file" accept="image/*" multiple style="padding:8px;border:1px dashed var(--border);border-radius:6px;width:100%;cursor:pointer;background:var(--bg2)">
+          <div id="hv-preview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-top:12px"></div>
+        </div>
+        
+        <div class="flex gap-2 justify-end">
+          <button class="btn btn-secondary" onclick="document.getElementById('home-visit-modal').style.display='none'">Batal</button>
+          <button class="btn btn-success" onclick="submitHomeVisit()" id="hv-submit-btn"><i data-lucide="check" style="width:16px;height:16px"></i> Simpan Kunjungan</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="evidence-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+      <div class="modal-content" style="max-width:700px">
+        <h3 style="font-weight:700;font-size:18px;margin-bottom:16px">📸 Bukti Foto Home Visit</h3>
+        <div id="evidence-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;max-height:500px;overflow-y:auto;padding:12px;background:var(--bg);border-radius:8px"></div>
+        <button class="btn btn-secondary mt-4" onclick="document.getElementById('evidence-modal').style.display='none'" style="width:100%">Tutup</button>
+      </div>
+    </div>`;
+  lucide.createIcons();
+}
+
+function openHomeVisitModal(studentId,className,studentName,nis){
+  const modal=document.getElementById('home-visit-modal');
+  document.getElementById('hv-name').textContent=studentName;
+  document.getElementById('hv-info').textContent=`NIS: ${nis} | Kelas: ${className}`;
+  
+  // Store current student being edited
+  window.currentHomeVisitStudent={studentId,className,studentName,nis};
+  window.homeVisitImages=[];
+  
+  // Reset form
+  document.getElementById('hv-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('hv-time').value=new Date().toTimeString().slice(0,5);
+  document.getElementById('hv-notes').value='';
+  document.getElementById('hv-preview').innerHTML='';
+  
+  // File input handler
+  document.getElementById('hv-file').onchange=function(e){
+    const files=Array.from(e.target.files);
+    if(files.length>5){toast('Maksimal 5 foto','error');return}
+    
+    window.homeVisitImages=[];
+    const preview=document.getElementById('hv-preview');preview.innerHTML='';
+    
+    files.forEach((file,i)=>{
+      if(file.size>2*1024*1024){toast(`Foto ${i+1} terlalu besar (>2MB)`,'error');return}
+      const reader=new FileReader();
+      reader.onload=function(evt){
+        window.homeVisitImages.push(evt.target.result);
+        const img=document.createElement('img');
+        img.src=evt.target.result;
+        img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid transparent';
+        img.onclick=()=>img.style.border='2px solid #2a8fff';
+        const div=document.createElement('div');
+        div.style.cssText='position:relative;overflow:hidden;border-radius:6px';
+        div.appendChild(img);
+        preview.appendChild(div);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+  
+  modal.style.display='flex';
+}
+
+function submitHomeVisit(){
+  const student=window.currentHomeVisitStudent;
+  const date=document.getElementById('hv-date').value;
+  const time=document.getElementById('hv-time').value;
+  const notes=document.getElementById('hv-notes').value.trim();
+  
+  if(!date||!time){toast('Tanggal dan waktu harus diisi','error');return}
+  if(!notes){toast('Catatan kunjungan harus diisi','error');return}
+  
+  const submitBtn=document.getElementById('hv-submit-btn');
+  submitBtn.disabled=true;
+  submitBtn.textContent='Menyimpan...';
+  
+  showProgress();
+  
+  setTimeout(()=>{
+    if(!APP.homeVisits[student.studentId]){
+      APP.homeVisits[student.studentId]={
+        className:student.className,
+        studentName:student.studentName,
+        nis:student.nis,
+        lastVisitDate:date,
+        lastVisitTime:time,
+        evidence:window.homeVisitImages||[]
+      };
+    }else{
+      APP.homeVisits[student.studentId].lastVisitDate=date;
+      APP.homeVisits[student.studentId].lastVisitTime=time;
+      APP.homeVisits[student.studentId].notes=notes;
+      APP.homeVisits[student.studentId].evidence=window.homeVisitImages||[];
+    }
+    
+    hideProgress();
+    submitBtn.disabled=false;
+    submitBtn.textContent='✓ Simpan Kunjungan';
+    
+    toast(`Home visit ${student.studentName} berhasil disimpan!`);
+    addLog(`Admin catat home visit untuk ${student.studentName} (${student.className})`);
+    document.getElementById('home-visit-modal').style.display='none';
+    renderView();
+  },1000);
+}
+
+function viewHomeVisitEvidence(studentId){
+  const visitData=APP.homeVisits[studentId];
+  if(!visitData||!visitData.evidence||visitData.evidence.length===0){
+    toast('Tidak ada bukti foto','error');
+    return;
+  }
+  
+  const gallery=document.getElementById('evidence-gallery');
+  gallery.innerHTML='';
+  
+  visitData.evidence.forEach((img,i)=>{
+    const div=document.createElement('div');
+    div.style.cssText='border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid var(--border);transition:all .2s';
+    div.innerHTML=`<img src="${img}" style="width:100%;height:100%;object-fit:cover" onclick="this.parentElement.style.borderColor='#2a8fff'">`;
+    gallery.appendChild(div);
+  });
+  
+  document.getElementById('evidence-modal').style.display='flex';
+}
 
 function saveSchoolName(){
   const v=document.getElementById('set-name').value.trim();if(!v)return;
@@ -834,5 +2748,5 @@ function saveSchoolLogo(){
 // ==================== INIT ====================
 render();
 </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9fa2ea44b02e91c9',t:'MTc3ODUyMDY2NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9fa2e33a075491c9',t:'MTc3ODUyMDM3Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
